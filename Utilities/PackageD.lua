@@ -3,7 +3,7 @@ ____  ___ __   __
 | __|/ _ \\ \ / /
 | _|| (_) |> w <
 |_|  \___//_/ \_\
-FOX's Data Packages Lib v1.1
+FOX's Data Packages Lib v1.2
 
 Github: https://github.com/Bitslayn/FOX-s-Figura-APIs/blob/main/Utilities/PackageD.lua
 ]]
@@ -52,8 +52,8 @@ local function normalize(modname)
 		:gsub("%.", "/")
 
 		-- Append ./ and ../ at beginning of modname
-		:gsub("^///", "../")
 		:gsub("^//", "./")
+		:gsub("^///", "../")
 
 		-- Append ../ between modname
 		:gsub("///", "/..")
@@ -94,7 +94,16 @@ function lib.require(modname)
 	end
 
 	loading[path] = true
-	local result = { load(file:readString(path .. ".lua"), path, _FOX)(path:match("(.-)/?([^/]+)$")) }
+	local ok, res = pcall(file.readString, file, path .. ".lua")
+	if not ok then
+		if res:find("java.io.FileNotFoundException") then
+			error('Tried to require nonexistent script "' .. path .. '"!', 2)
+		else
+			error(res, 2)
+		end
+	end
+
+	local result = { load(res, path, _FOX)(path:match("(.-)/?([^/]+)$")) }
 	loading[path] = nil
 
 	lib.loaded[path] = result
