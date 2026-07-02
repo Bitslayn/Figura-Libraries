@@ -32,7 +32,7 @@ local _FOX = setmetatable({}, { __index = _G })
 ---@param level integer
 ---@return string, string
 local function get_script(level)
-	return select(2, pcall(function() error("", level + 3) end)):match("(.-)/?([^/]+):"):sub(#prefix, -1)
+	return select(2, pcall(function() error("", level + 3) end)):gsub(prefix, ""):match("(.-)/?([^/]+):")
 end
 
 ---Unpacks the current traceback environment onto the navigation table
