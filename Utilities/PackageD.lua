@@ -3,7 +3,7 @@ ____  ___ __   __
 | __|/ _ \\ \ / /
 | _|| (_) |> w <
 |_|  \___//_/ \_\
-FOX's Data Packages Lib v1.2
+FOX's Data Packages Lib v1.2b
 
 Github: https://github.com/Bitslayn/FOX-s-Figura-APIs/blob/main/Utilities/PackageD.lua
 ]]
@@ -14,6 +14,8 @@ Github: https://github.com/Bitslayn/FOX-s-Figura-APIs/blob/main/Utilities/Packag
 
 ---@class FOXPackageD
 local lib = {}
+
+local prefix = "FOXPackageD: "
 
 ---Stores the scripts that have loaded and their returns
 ---@type table<string, any[]>
@@ -30,7 +32,7 @@ local _FOX = setmetatable({}, { __index = _G })
 ---@param level integer
 ---@return string, string
 local function get_script(level)
-	return select(2, pcall(function() error("", level + 3) end)):match("(.-)/?([^/]+):")
+	return select(2, pcall(function() error("", level + 3) end)):match("(.-)/?([^/]+):"):sub(#prefix, -1)
 end
 
 ---Unpacks the current traceback environment onto the navigation table
@@ -103,7 +105,7 @@ function lib.require(modname)
 		end
 	end
 
-	local result = { load(res, path, _FOX)(path:match("(.-)/?([^/]+)$")) }
+	local result = { load(res, prefix .. path, _FOX)(path:match("(.-)/?([^/]+)$")) }
 	loading[path] = nil
 
 	lib.loaded[path] = result
