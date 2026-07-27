@@ -3,7 +3,7 @@ ____  ___ __   __
 | __|/ _ \\ \ / /
 | _|| (_) |> w <
 |_|  \___//_/ \_\
-FOX's Texture Layers v1.0-rc3
+FOX's Part Layers v1.0-rc4
 
 Adds the ability to set unlimited Texture, RenderType, and Color layers to a ModelPart
 Injects into Figura's ModelPartAPI, adding layer methods, and replaces primary and secondary setters to use layers 1 and 2
@@ -49,14 +49,14 @@ end
 --#REGION ˚♡ Object ♡˚
 --==============================================================================================================================
 
----@alias FOXTextureLayers.Object {size: integer, parts: ModelPart[], textures: [ModelPart.textureType, string|Texture?][], renderTypes: (ModelPart.renderType?)[], colors: Vector3[]}
+---@alias FOXPartLayers.Object {size: integer, parts: ModelPart[], textures: [ModelPart.textureType, string|Texture?][], renderTypes: (ModelPart.renderType?)[], colors: Vector3[]}
 
----@type table<ModelPart, FOXTextureLayers.Object>
+---@type table<ModelPart, FOXPartLayers.Object>
 local managed = {}
 
 ---Creates a new layer object for this ModelPart
 ---@param root ModelPart
----@return FOXTextureLayers.Object
+---@return FOXPartLayers.Object
 ---@nodiscard
 local function new(root)
 	managed[root] = { size = 1, parts = { root }, textures = { {}, {} }, renderTypes = {}, colors = { white:copy(), white:copy() } }
@@ -68,7 +68,7 @@ end
 ------------------------------------------------------------------------------------------------
 
 ---Re-allocates the copies
----@param obj FOXTextureLayers.Object
+---@param obj FOXPartLayers.Object
 local function realloc(obj)
 	-- Find depth for table with holes
 
@@ -107,7 +107,7 @@ local function realloc(obj)
 end
 
 ---Updates the current texture layer in this part
----@param obj FOXTextureLayers.Object
+---@param obj FOXPartLayers.Object
 ---@param layer integer
 local function update(obj, layer)
 	-- Gets the part for this layer, and appropriate setter functions
