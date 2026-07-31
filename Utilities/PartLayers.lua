@@ -3,7 +3,7 @@ ____  ___ __   __
 | __|/ _ \\ \ / /
 | _|| (_) |> w <
 |_|  \___//_/ \_\
-FOX's Part Layers v1.0-rc6
+FOX's Part Layers v1.0-rc7
 
 Adds the ability to set unlimited Texture, RenderType, and Color layers to a ModelPart
 Injects into Figura's ModelPartAPI, adding layer methods, and replaces primary and secondary setters to use layers 1 and 2
@@ -97,7 +97,7 @@ local function realloc(obj)
 			secondaryRenderType(obj.parts[i], "NONE")
 		end
 	else
-		for i = math.max(obj.size, 2), size + 1 do
+		for i = math.max(obj.size, 2), #obj.parts do
 			obj.parts[i]:remove()
 			obj.parts[i] = nil
 		end
