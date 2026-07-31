@@ -83,7 +83,7 @@ local function realloc(obj)
 		size = math.max(layer, size)
 	end
 	size = math.ceil(size / 2)
-	
+
 	-- Early return for unchanged size
 
 	if size == obj.size then return obj end
