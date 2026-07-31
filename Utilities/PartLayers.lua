@@ -3,13 +3,19 @@ ____  ___ __   __
 | __|/ _ \\ \ / /
 | _|| (_) |> w <
 |_|  \___//_/ \_\
-FOX's Part Layers v1.0-rc5
+FOX's Part Layers v1.0-rc6
 
 Adds the ability to set unlimited Texture, RenderType, and Color layers to a ModelPart
 Injects into Figura's ModelPartAPI, adding layer methods, and replaces primary and secondary setters to use layers 1 and 2
 
 Github: https://github.com/Bitslayn/FOX-s-Figura-APIs/blob/main/Utilities/PartLayers.lua
 ]]
+
+--MAJOR CHANGE
+--changed for loop in realloc() from for i = math.max(obj.size, 2), size do -> for i = obj.size, math.max(size + 1, 2), -1 do
+
+--MINOR CHANGE
+--Added this, bumped version to rc6
 
 --==============================================================================================================================
 --#REGION ˚♡ Shared ♡˚
@@ -71,7 +77,7 @@ end
 ---@param obj FOXPartLayers.Object
 local function realloc(obj)
 	-- Find depth for table with holes
-	
+
 	local size = 0
 	for layer in pairs(obj.textures) do
 		size = math.max(layer, size)
@@ -79,9 +85,9 @@ local function realloc(obj)
 	size = math.ceil(size / 2)
 	
 	-- Early return for unchanged size
-	
+
 	if size == obj.size then return obj end
-	
+
 	-- Grow or shrink modelpart copies
 	if size > obj.size then
 		for i = math.max(obj.size, 2), size do
@@ -104,6 +110,7 @@ local function realloc(obj)
 
 	obj.size = size
 end
+
 ---Updates the current texture layer in this part
 ---@param obj FOXPartLayers.Object
 ---@param layer integer
