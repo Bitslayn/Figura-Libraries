@@ -71,19 +71,18 @@ end
 ---@param obj FOXPartLayers.Object
 local function realloc(obj)
 	-- Find depth for table with holes
-
+	
 	local size = 0
 	for layer in pairs(obj.textures) do
 		size = math.max(layer, size)
 	end
 	size = math.ceil(size / 2)
-
+	
 	-- Early return for unchanged size
-
+	
 	if size == obj.size then return obj end
-
+	
 	-- Grow or shrink modelpart copies
-
 	if size > obj.size then
 		for i = math.max(obj.size, 2), size do
 			obj.parts[i] = obj.parts[i - 1]
@@ -92,12 +91,12 @@ local function realloc(obj)
 				:parentType("NONE")
 				-- DEV NOTE: Niche Figura detail but the ModelPart matrix must be set after calling `parentType`. TL;DR this should always be called last.
 				:matrix(matrices.mat4())
-
 			primaryRenderType(obj.parts[i], "NONE")
 			secondaryRenderType(obj.parts[i], "NONE")
 		end
 	else
-		for i = math.max(obj.size, 2), size do
+		---Count backwards instead of forwards. -Xander
+		for i = obj.size, math.max(size + 1, 2), -1 do
 			obj.parts[i]:remove()
 			obj.parts[i] = nil
 		end
@@ -105,7 +104,6 @@ local function realloc(obj)
 
 	obj.size = size
 end
-
 ---Updates the current texture layer in this part
 ---@param obj FOXPartLayers.Object
 ---@param layer integer
