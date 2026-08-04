@@ -204,7 +204,7 @@ end
 ---
 ---If `texture` is `nil`, and layer is `2`, it will default to `"SECONDARY"`.
 ---
----If `texture` is `nil`, and layer is above 2, that layer will be removed.
+---If `texture` is `nil`, and layer is `3` or above, that layer will be removed.
 ---@param self ModelPart
 ---@param layer integer
 ---@param texture ModelPart.textureType?
