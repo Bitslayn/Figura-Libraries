@@ -3,7 +3,7 @@ ____  ___ __   __
 | __|/ _ \\ \ / /
 | _|| (_) |> w <
 |_|  \___//_/ \_\
-FOX's Part Layers v1.0-final-rc1
+FOX's Part Layers v1.0-final-rc2
 
 Adds the ability to set unlimited Texture, RenderType, and Color layers to a ModelPart
 Injects into Figura's ModelPartAPI, adding layer methods, and replaces primary and secondary setters to use layers 1 and 2
@@ -22,6 +22,8 @@ local secondaryRenderType = models.secondaryRenderType
 local primaryColor = models.primaryColor
 local secondaryColor = models.secondaryColor
 
+local blank = textures:newTexture("PartLayers_blank", 1, 1):setPixel(0, 0, vec(0, 0, 0, 0))
+
 local vec3 = vectors.vec3
 
 ---Converts raw args into a Vector3 with advanced error catching
@@ -30,7 +32,7 @@ local vec3 = vectors.vec3
 ---@param b number?
 local function color_args(r, g, b)
 	local ok, res = xpcall(function()
-		if type(r) == "number" then
+		if type(r) == "number" or r == nil then
 			return vec3():set(r or 1, g or 1, b or 1)
 		end
 		return vec3():set(r) -- Try set
@@ -58,31 +60,32 @@ local managed = {}
 local function new(root)
 	---@class FOXPartLayers.Object
 	managed[root] = {
-		---This object's name
+		---The root ModelPart
+		---@type ModelPart
+		root = root,
+		---The root ModelPart's name
 		---@type string
 		name = root:getName(),
 		---List of all ModelParts in this object
 		---@type ModelPart[]
-		parts = { root },
-		---Current part depth
-		---@type integer
-		parts_depth = 1,
+		parts = {},
 		---ModelPart texture varargs by layer
 		---@type table<integer, [ModelPart.textureType, string|Texture?]?>
-		textures = { {}, {} },
-		---Current texture depth
-		---@type integer
-		textures_depth = 2,
+		textures = { { "PRIMARY" }, { "SECONDARY" } },
 		---ModelPart render types by layer
 		---@type (ModelPart.renderType?)[]
 		renderTypes = {},
 		---ModelPart colors by layer
 		---@type Vector3[]
-		colors = { vec3(1, 1, 1), vec3(1, 1, 1) },
+		colors = {},
 		---Render event holder
 		---@type ModelPart
 		task = root:newPart("task"),
 	}
+
+	primaryTexture(root, "CUSTOM", blank)
+	secondaryTexture(root, "CUSTOM", blank)
+
 	return managed[root]
 end
 
@@ -95,23 +98,24 @@ end
 local function realloc(obj)
 	-- Find depth for textures table with holes
 
-	obj.textures_depth = 0
+	local depth = 0
 	for layer in pairs(obj.textures) do
-		obj.textures_depth = math.max(layer, obj.textures_depth)
+		depth = math.max(depth, layer)
 	end
-	local parts_depth = math.ceil(obj.textures_depth / 2)
+
+	local desired_depth = math.ceil(depth / 2)
 
 	-- Early return for unchanged size
 
-	if parts_depth == obj.textures_depth then return obj end
+	if desired_depth == #obj.parts then return end
 
 	-- Grow or shrink modelpart copies
 
-	if parts_depth > obj.parts_depth then
-		for i = math.max(obj.parts_depth + 1, 2), parts_depth do
-			obj.parts[i] = obj.parts[i - 1]
-				:copy(obj.name .. " (PartLayers " .. i * 2 - 1 .. " & " .. i * 2 .. ")")
-				:moveTo(obj.parts[i - 1])
+	if desired_depth > #obj.parts then
+		for i = #obj.parts + 1, desired_depth do
+			obj.parts[i] = (obj.parts[1] or obj.root)
+				:copy(("%s (PartLayers %d & %d)"):format(obj.name, i * 2 - 1, i * 2)) -- Fix for AST; obj.name .. " (PartLayers " .. i * 2 - 1 .. " & " .. i * 2 .. ")"
+				:moveTo(obj.root)
 				:parentType("NONE")
 				-- DEV NOTE: Niche Figura detail but the ModelPart matrix must be set after calling `parentType`. TL;DR this should always be called last.
 				:matrix(matrices.mat4())
@@ -120,17 +124,14 @@ local function realloc(obj)
 			secondaryRenderType(obj.parts[i], "NONE")
 		end
 	else
-		for i = math.max(parts_depth + 1, 2), obj.parts_depth do
+		for i = desired_depth + 1, #obj.parts do
 			obj.parts[i]:remove()
 			obj.parts[i] = nil
 		end
 	end
-
-	obj.parts_depth = parts_depth
 end
 
 ---Updates the current texture layer in this part
----@param obj FOXPartLayers.Object
 ---@param layer integer
 ---@param part ModelPart?
 ---@param is_prim boolean?
@@ -138,7 +139,7 @@ local function update(obj, layer, part, is_prim)
 	-- Gets the part for this layer, and appropriate setter functions
 
 	if part == nil then part = obj.parts[math.ceil(layer / 2)] end
-	if not part then return obj end
+	if not part then return end
 
 	if is_prim == nil then is_prim = layer % 2 == 1 end
 	local texture = is_prim and primaryTexture or secondaryTexture
@@ -159,10 +160,8 @@ end
 ---Updates all texture layers of this part
 ---@param obj FOXPartLayers.Object
 local function interlace(obj)
-	local half = math.ceil(obj.textures_depth / 2)
-
-	for i = 1, obj.textures_depth do
-		update(obj, i, obj.parts[(i - 1) % half + 1], i <= half)
+	for i = 1, #obj.parts * 2 do
+		update(obj, i, obj.parts[(i - 1) % #obj.parts + 1], i <= #obj.parts)
 	end
 end
 
@@ -256,12 +255,15 @@ end
 function ModelPart:getTextureLayers()
 	local obj = managed[self] or new(self)
 
+	local depth = 0
+
 	local flat = {}
 	for layer, t in pairs(obj.textures) do
 		flat[layer] = t[2]
+		depth = math.max(depth, layer)
 	end
 
-	return flat, obj.textures_depth
+	return flat, depth
 end
 
 ---Sets the render type of this part at the given layer.
@@ -309,7 +311,7 @@ function ModelPart:setColor(r, g, b)
 	local obj = managed[self] or new(self)
 	local col = color_args(r, g, b)
 
-	for layer = 1, obj.textures_depth do
+	for layer in pairs(obj.textures) do
 		obj.colors[layer] = col
 	end
 
