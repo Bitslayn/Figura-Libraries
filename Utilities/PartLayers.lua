@@ -43,6 +43,8 @@ end
 
 --[[Renderer rewrite
 
+For interlacing, attempt to flatten layers so that the least amount of parts are being rendered. Would also allow for using absurd layer numbers without lagging the game
+
 Limitations:
 Ground limitations will need to be set in place. ModelParts which have children should never render extra layers.
 
@@ -238,7 +240,7 @@ function ModelPart:setTextureLayer(layer, texture, source)
 	if texture then
 		obj.depth = math.max(obj.depth, layer)
 	else
-		for i = obj.depth, 1, -1 do
+		for i = obj.depth, 2, -1 do
 			if obj.layers.textures[i] then break end
 			obj.depth = i
 		end
