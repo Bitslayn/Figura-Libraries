@@ -59,12 +59,6 @@ Use preRender to push to the stack and postRender to pop from the stack.
 Render events should only be applied to ModelPart relatives that are managed.
 ]]
 
----@class FOXPartLayers.Layers
----@field textures (string|Texture?)[]
----@field textureTypes (ModelPart.textureType?)[]
----@field renderTypes (ModelPart.renderType?)[]
----@field colors table<integer, Vector3> [0] used for changing the default color on all layers
-
 ---@class FOXPartLayers.Part
 ---@field name string Custom name given to copied parts
 ---@field parts ModelPart[] List of all ModelParts used for layer rendering
@@ -72,25 +66,37 @@ Render events should only be applied to ModelPart relatives that are managed.
 ---@field depth integer Number of layers applied to this part
 ---@field task ModelPart Render event holder
 
+---@class FOXPartLayers.Layers
+---@field textures (string|Texture?)[]
+---@field textureTypes (ModelPart.textureType?)[]
+---@field renderTypes (ModelPart.renderType?)[]
+---@field colors table<integer, Vector3> [0] used for changing the default color on all layers
+
 ---@type table<ModelPart, FOXPartLayers.Part>
 local managed = {}
 
-local default_textureTypes = { "PRIMARY", "SECONDARY" }
-local default_renderTypes = { "TRANSLUCENT", "EMISSIVE" }
+---@type FOXPartLayers.Layers
+local defaults = {
+	textures = {},
+	textureTypes = { "PRIMARY", "SECONDARY" },
+	renderTypes = setmetatable({ "TRANSLUCENT", "EMISSIVE" }, { __index = function() return "TRANSLUCENT" end }),
+	colors = setmetatable({ [0] = vec3(1, 1, 1) }, { __index = function() return vec3(1, 1, 1) end }),
+}
 
 ---Creates a new layer object for this ModelPart
 ---@param root ModelPart
 ---@return FOXPartLayers.Part
 ---@nodiscard
 local function new(root)
+	---@type FOXPartLayers.Part
 	managed[root] = {
 		name = root:getName() .. " (PartLayers %d & %d)",
 		parts = { root },
 		layers = {
-			textures = {},
-			textureTypes = {},
-			renderTypes = {},
-			colors = { [0] = root:getColor() },
+			textures = setmetatable({}, { __index = defaults.textures }),
+			textureTypes = setmetatable({}, { __index = defaults.textureTypes }),
+			renderTypes = setmetatable({}, { __index = defaults.renderTypes }),
+			colors = setmetatable({}, { __index = defaults.colors }),
 		},
 		depth = 2,
 		task = root:newPart("task"),
@@ -124,10 +130,9 @@ local function realloc(obj)
 	if desired_depth > #obj.parts then
 		for i = #obj.parts + 1, desired_depth do
 			obj.parts[i] = obj.parts[i - 1]
-				:copy(obj.name:format(i * 2 - 1, i * 2)) -- Fix for AST; obj.name .. " (PartLayers " .. i * 2 - 1 .. " & " .. i * 2 .. ")"
+				:copy(obj.name:format(i * 2 - 1, i * 2))
 				:moveTo(obj.parts[i - 1])
 				:parentType("NONE")
-				-- DEV NOTE: Niche Figura detail but the ModelPart matrix must be set after calling `parentType`. TL;DR this should always be called last.
 				:matrix(matrices.mat4())
 
 			primaryRenderType(obj.parts[i], "NONE")
@@ -156,11 +161,11 @@ local function update(obj, part, layer, primary)
 	-- Updates the layer's texture, render type, and color
 
 	if obj.layers.textures[layer] or layer <= 2 then
-		texture(part, obj.layers.textureTypes[layer] or default_textureTypes[layer], obj.layers.textures[layer])
-		render_type(part, obj.layers.renderTypes[layer] or default_renderTypes[layer] or "TRANSLUCENT")
+		texture(part, obj.layers.textureTypes[layer], obj.layers.textures[layer])
+		render_type(part, obj.layers.renderTypes[layer])
 
-		local old = obj.layers.colors[layer - 1] or vec3(1, 1, 1) -- `1, 1, 1` fix for setColor, you cannot tint something that doesn't exist
-		local col = obj.layers.colors[layer] or obj.layers.colors[0]
+		local old = obj.layers.colors[layer - 1]
+		local col = obj.layers.colors[layer]
 
 		if part == obj.parts[1] then
 			color(part, col + E)
