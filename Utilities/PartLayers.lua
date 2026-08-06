@@ -364,29 +364,6 @@ function ModelPart:getColorLayer(layer)
 	return obj.layers.colors[layer] and obj.layers.colors[layer]:copy() or obj.layers.colors[0]:copy()
 end
 
----Gets the ModelPart at the given layer.
----
----May return `nil` if no texture exists for this layer.
----@param layer integer
----@return ModelPart?
----@nodiscard
-function ModelPart:getPartToLayer(layer)
-	if not layer or layer < 1 then error("Invalid layer index: " .. tostring(layer), 2) end
-	local obj = managed[self] or new(self)
-
-	return obj.parts[math.ceil(layer / 2)]
-end
-
----Forces ModelPart layers to update
----@return ModelPart
-function ModelPart:updateLayers()
-	local obj = managed[self] or new(self)
-
-	queue(obj)
-
-	return self
-end
-
 --#ENDREGION -----------------------------------------------------------------------------------
 --#REGION ˚♡ ModelPart > Alias Methods ♡˚
 ------------------------------------------------------------------------------------------------
@@ -411,6 +388,20 @@ ModelPart.setSecondaryRenderType = function(self, renderType) return self:setRen
 ModelPart.secondaryRenderType = function(self, renderType) return self:setRenderTypeLayer(2, renderType) end
 ModelPart.setSecondaryColor = function(self, ...) return self:setColorLayer(2, ...) end
 ModelPart.secondaryColor = function(self, ...) return self:setColorLayer(2, ...) end
+
+---**This function is deprecated due to ModelPart handling changes.**
+---
+---~~Gets the ModelPart at the given layer.~~
+---
+---~~May return `nil` if no texture exists for this layer.~~
+---@deprecated
+ModelPart.getPartToLayer = nil
+
+---**This function is deprecated as it no longer serves its intended purpose.**
+---
+---~~Forces ModelPart layers to update~~
+---@deprecated
+ModelPart.updateLayers = nil
 
 --#ENDREGION
 
