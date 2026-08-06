@@ -114,11 +114,6 @@ end
 local function realloc(obj)
 	-- Find depth for textures table with holes
 
-	obj.depth = 2
-	for layer in pairs(obj.layers.textures) do
-		obj.depth = math.max(obj.depth, layer)
-	end
-
 	local desired_depth = math.ceil(obj.depth / 2)
 
 	-- Early return for unchanged size
@@ -238,6 +233,17 @@ function ModelPart:setTextureLayer(layer, texture, source)
 	obj.layers.textures[layer] = source
 	obj.layers.textureTypes[layer] = texture
 
+	-- Recalculate texture depth
+
+	if texture then
+		obj.depth = math.max(obj.depth, layer)
+	else
+		for i = obj.depth, 1, -1 do
+			if obj.layers.textures[i] then break end
+			obj.depth = i
+		end
+	end
+
 	queue(obj)
 
 	return self
@@ -266,7 +272,7 @@ end
 function ModelPart:getTextureLayers()
 	local obj = managed[self] or new(self)
 
-	return parseJson(toJson(obj.layers.textures)), obj.depth
+	return { table.unpack(obj.layers.textures, 1, obj.depth) }, obj.depth
 end
 
 ---Sets the render type of this part at the given layer.
