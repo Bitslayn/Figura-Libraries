@@ -3,7 +3,7 @@ ____  ___ __   __
 | __|/ _ \\ \ / /
 | _|| (_) |> w <
 |_|  \___//_/ \_\
-FOX's Part Layers v1.0-final-rc3
+FOX's Part Layers v1.0-final-rc4-dev
 
 Adds the ability to set unlimited Texture, RenderType, and Color layers to a ModelPart
 Injects into Figura's ModelPartAPI, adding layer methods, and replaces primary and secondary setters to use layers 1 and 2
@@ -41,36 +41,50 @@ end
 --#REGION ˚♡ Object ♡˚
 --==============================================================================================================================
 
----@type table<ModelPart, FOXPartLayers.Object>
+--[[Renderer rewrite
+
+Limitations:
+Ground limitations will need to be set in place. ModelParts which have children should never render extra layers.
+
+New plan: Queue and linked tables
+Instead of doing everything in render and overrunning resource limits, exhaust a queue and use linked tables rather than a customization stack.
+
+Old plan: Layer Customization Stack
+Groups should propagate customizations to all children, allowing for proper mixing and avoiding interlacing groups.
+
+When a layer needs to be updated, it will mark children as dirty if they exist.
+If a parent is found to have had additional layers, marks them as dirty.
+Use preRender to push to the stack and postRender to pop from the stack.
+
+Render events should only be applied to ModelPart relatives that are managed.
+]]
+
+---@type table<ModelPart, FOXPartLayers.ModelPart>
 local managed = {}
 
 ---Creates a new layer object for this ModelPart
 ---@param root ModelPart
----@return FOXPartLayers.Object
+---@return FOXPartLayers.ModelPart
 ---@nodiscard
 local function new(root)
-	---@class FOXPartLayers.Object
+	---@class FOXPartLayers.Layers
+	---@field textures table<integer, [ModelPart.textureType, string|Texture?]?> ModelPart texture varargs by layer
+	---@field renderTypes (ModelPart.renderType?)[] ModelPart render types by layer
+	---@field colors table<integer, Vector3> ModelPart colors by layer
+
+	---@class FOXPartLayers.ModelPart
+	---@field name string The root ModelPart's name
+	---@field parts ModelPart[] List of all ModelParts in this object
+	---@field layers FOXPartLayers.Layers
+	---@field task ModelPart Render event holder
 	managed[root] = {
-		---The root ModelPart's name
-		---@type string
 		name = root:getName(),
-		---List of all ModelParts in this object
-		---@type ModelPart[]
 		parts = { root },
-		---ModelPart texture varargs by layer
-		---@type table<integer, [ModelPart.textureType, string|Texture?]?>
-		textures = { {}, {} },
-		---ModelPart render types by layer
-		---@type (ModelPart.renderType?)[]
-		renderTypes = {},
-		---Root ModelPart color
-		---@type Vector3
-		color = root:getColor(),
-		---ModelPart colors by layer
-		---@type Vector3[]
-		colors = {},
-		---Render event holder
-		---@type ModelPart
+		layers = {
+			textures = { {}, {} },
+			renderTypes = {},
+			colors = { [0] = root:getColor() },
+		},
 		task = root:newPart("task"),
 	}
 
@@ -82,12 +96,12 @@ end
 ------------------------------------------------------------------------------------------------
 
 ---Re-allocates the copies
----@param obj FOXPartLayers.Object
+---@param obj FOXPartLayers.ModelPart
 local function realloc(obj)
 	-- Find depth for textures table with holes
 
 	local depth = 0
-	for layer in pairs(obj.textures) do
+	for layer in pairs(obj.layers.textures) do
 		depth = math.max(depth, layer)
 	end
 
@@ -120,7 +134,7 @@ local function realloc(obj)
 end
 
 ---Updates the current texture layer in this part
----@param obj FOXPartLayers.Object
+---@param obj FOXPartLayers.ModelPart
 ---@param part ModelPart
 ---@param layer integer
 ---@param primary boolean
@@ -133,12 +147,12 @@ local function update(obj, part, layer, primary)
 
 	-- Updates the layer's texture, render type, and color
 
-	if obj.textures[layer] then
-		texture(part, obj.textures[layer][1], obj.textures[layer][2])
-		render_type(part, obj.renderTypes[layer])
+	if obj.layers.textures[layer] then
+		texture(part, obj.layers.textures[layer][1], obj.layers.textures[layer][2])
+		render_type(part, obj.layers.renderTypes[layer])
 
-		local old = obj.colors[layer - 1] or vec3(1, 1, 1) -- `1, 1, 1` fix for setColor, you cannot tint something that doesn't exist
-		local col = obj.colors[layer] or obj.color
+		local old = obj.layers.colors[layer - 1] or vec3(1, 1, 1) -- `1, 1, 1` fix for setColor, you cannot tint something that doesn't exist
+		local col = obj.layers.colors[layer] or obj.layers.colors[0]
 
 		if part == obj.parts[1] then
 			color(part, col + E)
@@ -151,7 +165,7 @@ local function update(obj, part, layer, primary)
 end
 
 ---Updates all texture layers of this part
----@param obj FOXPartLayers.Object
+---@param obj FOXPartLayers.ModelPart
 local function interlace(obj)
 	for i = 1, #obj.parts * 2 do
 		update(obj, obj.parts[(i - 1) % #obj.parts + 1], i, i <= #obj.parts)
@@ -159,8 +173,8 @@ local function interlace(obj)
 end
 
 ---Queues realloc and interlace functions on this object
----@param obj FOXPartLayers.Object
-local function dirty(obj)
+---@param obj FOXPartLayers.ModelPart
+local function queue(obj)
 	function obj.task.preRender()
 		realloc(obj)
 		interlace(obj)
@@ -208,10 +222,10 @@ function ModelPart:setTextureLayer(layer, texture, source)
 
 	if texture == "CUSTOM" and not source then error('"CUSTOM" texture type requires argument type: Texture', 2) end
 
-	obj.textures[layer] = texture and { texture, source } or layer <= 2 and {} or nil
-	obj.renderTypes[layer] = obj.renderTypes[layer] or layer > 2 and "TRANSLUCENT" or nil
+	obj.layers.textures[layer] = texture and { texture, source } or layer <= 2 and {} or nil
+	obj.layers.renderTypes[layer] = obj.layers.renderTypes[layer] or layer > 2 and "TRANSLUCENT" or nil
 
-	dirty(obj)
+	queue(obj)
 
 	return self
 end
@@ -231,12 +245,12 @@ function ModelPart:getTextureLayer(layer)
 		return obj.parts[1]:getPrimaryTexture()
 	elseif layer == 2 then
 		return obj.parts[1]:getSecondaryTexture()
-	elseif not obj.textures[layer] then
+	elseif not obj.layers.textures[layer] then
 		return nil, nil
 	end
 
 	---@diagnostic disable-next-line: redundant-return-value
-	return table.unpack(obj.textures[layer])
+	return table.unpack(obj.layers.textures[layer])
 end
 
 ---Gets a list of all textures applied to this ModelPart indexed by its layer.
@@ -251,7 +265,7 @@ function ModelPart:getTextureLayers()
 	local depth = 0
 
 	local flat = {}
-	for layer, t in pairs(obj.textures) do
+	for layer, t in pairs(obj.layers.textures) do
 		flat[layer] = t[2]
 		depth = math.max(depth, layer)
 	end
@@ -269,9 +283,9 @@ function ModelPart:setRenderTypeLayer(layer, renderType)
 	if not layer or layer < 1 then error("Invalid layer index: " .. tostring(layer), 2) end
 	local obj = managed[self] or new(self)
 
-	obj.renderTypes[layer] = renderType or layer > 2 and "TRANSLUCENT" or nil
+	obj.layers.renderTypes[layer] = renderType or layer > 2 and "TRANSLUCENT" or nil
 
-	dirty(obj)
+	queue(obj)
 
 	return self
 end
@@ -286,7 +300,7 @@ function ModelPart:getRenderTypeLayer(layer)
 	if not layer or layer < 1 then error("Invalid layer index: " .. tostring(layer), 2) end
 	local obj = managed[self] or new(self)
 
-	return obj.renderTypes[layer]
+	return obj.layers.renderTypes[layer]
 end
 
 ---Sets the color multiplier of this part.
@@ -306,7 +320,7 @@ function ModelPart:setColor(r, g, b)
 	obj.color = color_args(r, g, b)
 	obj.colors = {}
 
-	dirty(obj)
+	queue(obj)
 
 	return self
 end
@@ -327,9 +341,9 @@ function ModelPart:setColorLayer(layer, r, g, b)
 	if not layer or layer < 1 then error("Invalid layer index: " .. tostring(layer), 2) end
 	local obj = managed[self] or new(self)
 
-	obj.colors[layer] = color_args(r, g, b)
+	obj.layers.colors[layer] = color_args(r, g, b)
 
-	dirty(obj)
+	queue(obj)
 
 	return self
 end
@@ -344,7 +358,7 @@ function ModelPart:getColorLayer(layer)
 	if not layer or layer < 1 then error("Invalid layer index: " .. tostring(layer), 2) end
 	local obj = managed[self] or new(self)
 
-	return obj.colors[layer]
+	return obj.layers.colors[layer]
 end
 
 ---Gets the ModelPart at the given layer.
@@ -364,7 +378,7 @@ end
 ---@return ModelPart
 function ModelPart:updateLayers()
 	local obj = managed[self] or new(self)
-	dirty(obj)
+	queue(obj)
 	return self
 end
 
