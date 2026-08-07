@@ -59,12 +59,15 @@ If a parent is found to have had additional layers, marks them as dirty.
 Use preRender to push to the stack and postRender to pop from the stack.
 
 Render events should only be applied to ModelPart relatives that are managed.
+
+Figure out a way to create a textures layer without holes without wasting instructions and while retaining inheritence.
 ]]
 
 ---@class FOXPartLayers.Part
 ---@field name string Custom name given to copied parts
 ---@field parts ModelPart[] List of all ModelParts used for layer rendering
 ---@field layers FOXPartLayers.Layers ModelPart customizations by layer
+---@field bitmask integer
 ---@field depth integer Number of layers applied to this part
 ---@field task ModelPart Render event holder
 
@@ -100,6 +103,7 @@ local function new(root)
 			renderTypes = setmetatable({}, { __index = defaults.renderTypes }),
 			colors = setmetatable({}, { __index = defaults.colors }),
 		},
+		bitmask = 3,
 		depth = 2,
 		task = root:newPart("task"),
 	}
@@ -227,24 +231,23 @@ end
 ---@param source string|Texture?
 ---@return self
 function ModelPart:setTextureLayer(layer, texture, source)
-	if not layer or layer < 1 then error("Invalid layer index: " .. tostring(layer), 2) end
+	if not layer or layer ~= math.clamp(layer, 1, 32) then error("Invalid layer index: " .. tostring(layer), 2) end
 	local obj = managed[self] or new(self)
 
 	if texture == "CUSTOM" and not source then error('"CUSTOM" texture type requires argument type: Texture', 2) end
 
-	obj.layers.textures[layer] = source
-	obj.layers.textureTypes[layer] = texture
-
-	-- Recalculate texture depth
+	-- Update bitmask and depth
+	-- Prevent removing layers 1 and 2
 
 	if texture then
-		obj.depth = math.max(obj.depth, layer)
-	else
-		for i = obj.depth, 2, -1 do
-			if obj.layers.textures[i] then break end
-			obj.depth = i
-		end
+		obj.bitmask = bit32.bor(obj.bitmask, 2 ^ (layer - 1))
+	elseif layer > 2 then
+		obj.bitmask = bit32.band(obj.bitmask, bit32.bnot(2 ^ (layer - 1)))
 	end
+	obj.depth = math.floor(math.log(obj.bitmask, 2)) + 1
+
+	obj.layers.textures[layer] = source
+	obj.layers.textureTypes[layer] = texture
 
 	queue(obj)
 
@@ -259,7 +262,7 @@ end
 ---@return string|Texture?
 ---@nodiscard
 function ModelPart:getTextureLayer(layer)
-	if not layer or layer < 1 then error("Invalid layer index: " .. tostring(layer), 2) end
+	if not layer or layer ~= math.clamp(layer, 1, 32) then error("Invalid layer index: " .. tostring(layer), 2) end
 	local obj = managed[self] or new(self)
 
 	return obj.layers.textureTypes[layer], obj.layers.textures[layer]
@@ -284,7 +287,7 @@ end
 ---@param renderType ModelPart.renderType?
 ---@return self
 function ModelPart:setRenderTypeLayer(layer, renderType)
-	if not layer or layer < 1 then error("Invalid layer index: " .. tostring(layer), 2) end
+	if not layer or layer ~= math.clamp(layer, 1, 32) then error("Invalid layer index: " .. tostring(layer), 2) end
 	local obj = managed[self] or new(self)
 
 	obj.layers.renderTypes[layer] = renderType or layer > 2 and "TRANSLUCENT" or nil
@@ -301,7 +304,7 @@ end
 ---@return ModelPart.renderType?
 ---@nodiscard
 function ModelPart:getRenderTypeLayer(layer)
-	if not layer or layer < 1 then error("Invalid layer index: " .. tostring(layer), 2) end
+	if not layer or layer ~= math.clamp(layer, 1, 32) then error("Invalid layer index: " .. tostring(layer), 2) end
 	local obj = managed[self] or new(self)
 
 	return obj.layers.renderTypes[layer]
@@ -341,7 +344,7 @@ end
 ---@overload fun(self: ModelPart, layer: integer, col: Vector3?): ModelPart
 ---@return self
 function ModelPart:setColorLayer(layer, r, g, b)
-	if not layer or layer < 1 then error("Invalid layer index: " .. tostring(layer), 2) end
+	if not layer or layer ~= math.clamp(layer, 1, 32) then error("Invalid layer index: " .. tostring(layer), 2) end
 	local obj = managed[self] or new(self)
 
 	obj.layers.colors[layer] = color_args(r, g, b)
@@ -358,7 +361,7 @@ end
 ---@return Vector3
 ---@nodiscard
 function ModelPart:getColorLayer(layer)
-	if not layer or layer < 1 then error("Invalid layer index: " .. tostring(layer), 2) end
+	if not layer or layer ~= math.clamp(layer, 1, 32) then error("Invalid layer index: " .. tostring(layer), 2) end
 	local obj = managed[self] or new(self)
 
 	return obj.layers.colors[layer] and obj.layers.colors[layer]:copy() or obj.layers.colors[0]:copy()
