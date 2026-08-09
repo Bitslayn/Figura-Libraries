@@ -73,7 +73,7 @@ local defaults = {
 local function new(root)
 	---@type FOXPartLayers.Part
 	managed[root] = {
-		name = root:getName() .. " (PartLayers %d & %d)",
+		name = root:getName() .. " (PartLayers)",
 		parts = { root },
 		layers = {
 			textures = setmetatable({}, { __index = defaults.textures }),
@@ -96,7 +96,7 @@ end
 ---Grow or shrink ModelPart copy depth to desired depth
 ---@param obj FOXPartLayers.Part
 ---@param depth integer
-local function realloc(obj, depth)
+local function resize(obj, depth)
 	if depth == #obj.parts then return end
 
 	if depth > #obj.parts then
@@ -104,7 +104,7 @@ local function realloc(obj, depth)
 
 		for i = #obj.parts + 1, depth do
 			obj.parts[i] = obj.parts[i - 1]
-				:copy(obj.name:format(i * 2 - 1, i * 2))
+				:copy(obj.name)
 				:moveTo(obj.parts[i - 1])
 				:parentType("NONE")
 				:matrix(matrices.mat4())
@@ -122,26 +122,23 @@ local function realloc(obj, depth)
 	end
 end
 
----Updates the current texture layer in this part
+---Sets the texture, renderType, and color for a single layer
 ---@param obj FOXPartLayers.Part
+---@param curr_layer integer
+---@param prev_layer integer
 ---@param part ModelPart
----@param layer integer
 ---@param primary boolean
-local function update(obj, part, layer, primary)
-	-- Gets the appropriate setter functions
-
+local function set(obj, curr_layer, prev_layer, part, primary)
 	local texture = primary and primaryTexture or secondaryTexture
 	local render_type = primary and primaryRenderType or secondaryRenderType
 	local color = primary and primaryColor or secondaryColor
 
-	-- Updates the layer's texture, render type, and color
+	if curr_layer then
+		texture(part, obj.layers.textureTypes[curr_layer], obj.layers.textures[curr_layer])
+		render_type(part, obj.layers.renderTypes[curr_layer])
 
-	if obj.layers.textures[layer] or layer <= 2 then
-		texture(part, obj.layers.textureTypes[layer], obj.layers.textures[layer])
-		render_type(part, obj.layers.renderTypes[layer])
-
-		local old = obj.layers.colors[layer - 1]
-		local col = obj.layers.colors[layer]
+		local old = obj.layers.colors[prev_layer]
+		local col = obj.layers.colors[curr_layer]
 
 		if part == obj.parts[1] then
 			color(part, col + E)
@@ -153,21 +150,31 @@ local function update(obj, part, layer, primary)
 	end
 end
 
----Updates all texture layers of this part
+---Applies changes to ModelParts, interlacing and flattening layers to use the least complexity
 ---@param obj FOXPartLayers.Part
-local function interlace(obj)
+local function apply(obj)
+	---@type integer[]
+	local layers = {}
+	for i = 1, obj.depth do
+		layers[#layers + 1] = obj.layers.textureTypes[i] and i or nil
+	end
+
+	resize(obj, math.ceil(#layers / 2))
+
 	for i = 1, #obj.parts * 2 do
-		update(obj, obj.parts[(i - 1) % #obj.parts + 1], i, i <= #obj.parts)
+		local curr_layer = layers[i]
+		local prev_layer = layers[i - 1]
+		local part = obj.parts[(i - 1) % #obj.parts + 1]
+		local primary = i <= #obj.parts
+		set(obj, curr_layer, prev_layer, part, primary)
 	end
 end
 
----Queues realloc and interlace functions on this object
+---Queues layer application
 ---@param obj FOXPartLayers.Part
 local function queue(obj)
 	function obj.task.preRender()
-		realloc(obj, math.ceil(obj.depth / 2))
-		interlace(obj)
-
+		apply(obj)
 		obj.task.preRender = nil
 	end
 end
