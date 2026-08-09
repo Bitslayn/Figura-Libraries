@@ -299,7 +299,7 @@ end
 function ModelPart:setColor(r, g, b)
 	local obj = managed[self] or new(self)
 
-	obj.layers.colors[0] = color_args(r, g, b)
+	obj.layers.colors = setmetatable({ [0] = color_args(r, g, b) }, getmetatable(obj.layers.colors))
 
 	queue(obj)
 
