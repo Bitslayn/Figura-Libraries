@@ -90,7 +90,7 @@ local function new(root)
 end
 
 ------------------------------------------------------------------------------------------------
---#REGION ˚♡ ModelPart > Render Algorithm ♡˚
+--#REGION ˚♡ FOXPartLayers > Render Algorithm ♡˚
 ------------------------------------------------------------------------------------------------
 
 ---Grow or shrink ModelPart copy depth to desired depth
