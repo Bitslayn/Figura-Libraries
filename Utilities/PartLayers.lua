@@ -38,30 +38,8 @@ local function color_args(r, g, b)
 end
 
 --#ENDREGION --=================================================================================================================
---#REGION ˚♡ Object ♡˚
+--#REGION ˚♡ FOXPartLayers ♡˚
 --==============================================================================================================================
-
---[[Renderer rewrite
-
-For interlacing, attempt to flatten layers so that the least amount of parts are being rendered. Would also allow for using absurd layer numbers without lagging the game
-
-Limitations:
-Ground limitations will need to be set in place. ModelParts which have children should never render extra layers.
-
-New plan: Queue and linked tables
-Instead of doing everything in render and overrunning resource limits, exhaust a queue and use linked tables rather than a customization stack.
-
-Old plan: Layer Customization Stack
-Groups should propagate customizations to all children, allowing for proper mixing and avoiding interlacing groups.
-
-When a layer needs to be updated, it will mark children as dirty if they exist.
-If a parent is found to have had additional layers, marks them as dirty.
-Use preRender to push to the stack and postRender to pop from the stack.
-
-Render events should only be applied to ModelPart relatives that are managed.
-
-Figure out a way to create a textures layer without holes without wasting instructions and while retaining inheritence.
-]]
 
 ---@class FOXPartLayers.Part
 ---@field name string Custom name given to copied parts
@@ -112,24 +90,19 @@ local function new(root)
 end
 
 ------------------------------------------------------------------------------------------------
---#REGION ˚♡ Object > Library ♡˚
+--#REGION ˚♡ ModelPart > Render Algorithm ♡˚
 ------------------------------------------------------------------------------------------------
 
----Re-allocates the copies
+---Grow or shrink ModelPart copy depth to desired depth
 ---@param obj FOXPartLayers.Part
-local function realloc(obj)
-	-- Find depth for textures table with holes
+---@param depth integer
+local function realloc(obj, depth)
+	if depth == #obj.parts then return end
 
-	local desired_depth = math.ceil(obj.depth / 2)
+	if depth > #obj.parts then
+		-- Grow
 
-	-- Early return for unchanged size
-
-	if desired_depth == #obj.parts then return end
-
-	-- Grow or shrink modelpart copies
-
-	if desired_depth > #obj.parts then
-		for i = #obj.parts + 1, desired_depth do
+		for i = #obj.parts + 1, depth do
 			obj.parts[i] = obj.parts[i - 1]
 				:copy(obj.name:format(i * 2 - 1, i * 2))
 				:moveTo(obj.parts[i - 1])
@@ -140,7 +113,9 @@ local function realloc(obj)
 			secondaryRenderType(obj.parts[i], "NONE")
 		end
 	else
-		for i = desired_depth + 1, #obj.parts do
+		-- Shrink
+
+		for i = depth + 1, #obj.parts do
 			obj.parts[i]:remove()
 			obj.parts[i] = nil
 		end
@@ -190,7 +165,7 @@ end
 ---@param obj FOXPartLayers.Part
 local function queue(obj)
 	function obj.task.preRender()
-		realloc(obj)
+		realloc(obj, math.ceil(obj.depth / 2))
 		interlace(obj)
 
 		obj.task.preRender = nil
