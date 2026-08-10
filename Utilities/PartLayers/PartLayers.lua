@@ -199,29 +199,33 @@ end
 
 ---Sets the texture layer of this part.
 ---
----Setting the texture type to `"RESOURCE"` allows selecting any namespaced texture to use as the texture source.
----Setting the texture type to `"CUSTOM"` allows selecting a Figura `Texture` to use as the texture source.
+---Layers can be removed if a texture type isn't provided when calling this method.
 ---
----If `texture` is `nil`, and layer is `1`, it will default to `"PRIMARY"`.
+---A custom texture type requires a Texture in the source field. Similarly, a resource string is required for the resource texture type.
 ---
----If `texture` is `nil`, and layer is `2`, it will default to `"SECONDARY"`.
+---```lua
+---   local jacket = models.model.root.Body.Jacket
+---   local pride_pin = textures["pride_pin"]
 ---
----If `texture` is `nil`, and layer is `3` or above, that layer will be removed.
+---   jacket:setTextureLayer(3, "CUSTOM", pride_pin)
+---```
 ---@param self ModelPart
----@param layer integer
----@param texture ModelPart.textureType?
----@param source string|Texture?
----@return self
-function ModelPart:setTextureLayer(layer, texture, source)
+---@param layer integer Target layer index
+---@param textureType ModelPart.textureType? Defaults to `"PRIMARY"` or `"SECONDARY"`
+---@param source string|Texture? Required for `"RESOURCE"` and `"CUSTOM"` texture types
+---@overload fun(self: ModelPart, layer: integer, textureType: "RESOURCE", source: string) The `"RESOURCE"` texture type requires a resource string in the source field
+---@overload fun(self: ModelPart, layer: integer, textureType: "CUSTOM", source: Texture) The `"CUSTOM"` texture type requires a Texture in the source field
+---@return self # Returns `self` for chaining
+function ModelPart:setTextureLayer(layer, textureType, source)
 	if not layer or layer ~= math.clamp(layer, 1, 32) then error("Invalid layer index: " .. tostring(layer), 2) end
 	local obj = managed[self] or new(self)
 
-	if texture == "CUSTOM" and not source then error('"CUSTOM" texture type requires argument type: Texture', 2) end
+	if textureType == "CUSTOM" and not source then error('"CUSTOM" texture type requires argument type: Texture', 2) end
 
 	-- Update bitmask and depth
 	-- Prevent removing layers 1 and 2
 
-	if texture then
+	if textureType then
 		obj.bitmask = bit32.bor(obj.bitmask, 2 ^ (layer - 1))
 	elseif layer > 2 then
 		obj.bitmask = bit32.band(obj.bitmask, bit32.bnot(2 ^ (layer - 1)))
@@ -229,7 +233,7 @@ function ModelPart:setTextureLayer(layer, texture, source)
 	obj.depth = math.floor(math.log(obj.bitmask, 2)) + 1
 
 	obj.layers.textures[layer] = source
-	obj.layers.textureTypes[layer] = texture
+	obj.layers.textureTypes[layer] = textureType
 
 	queue(obj)
 
