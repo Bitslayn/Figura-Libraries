@@ -85,9 +85,6 @@ ModelPart:setTextureLayer(layer)
 
 #### Returns:
 
-> [!IMPORTANT]  
-> Method returns should not be discarded
-
 | Name | Type(s) | Description |
 | - | - | - |
 | textureType | [ModelPart](https://figura-wiki.pages.dev/globals/Models) | Returns the texture type stored for this layer if this layer is defined |
