@@ -185,6 +185,7 @@ end
 --#REGION ˚♡ ModelPart ♡˚
 --==============================================================================================================================
 
+---@documentation
 ---@class ModelPart
 local ModelPart = {}
 
@@ -209,7 +210,6 @@ end
 ---
 ---   jacket:setTextureLayer(3, "CUSTOM", pride_pin)
 ---```
----@param self ModelPart
 ---@param layer integer Target layer index
 ---@param textureType ModelPart.textureType? Defaults to `"PRIMARY"` or `"SECONDARY"`
 ---@param source string|Texture? Required for `"RESOURCE"` and `"CUSTOM"` texture types
@@ -240,12 +240,18 @@ function ModelPart:setTextureLayer(layer, textureType, source)
 	return self
 end
 
----Gets the texture data of this part at the given layer.
+---Gets the texture layer of this part.
 ---
----If the texture of this layer is `"RESOURCE"` or `"CUSTOM"`, then a second value will be returned.
----@param layer integer
----@return ModelPart.textureType?
----@return string|Texture?
+---```lua
+---   local jacket = models.model.root.Body.Jacket
+---
+---   local textureType, source = jacket:getTextureLayer(3)
+---
+---   print(textureType, source)
+---```
+---@param layer integer Target layer index
+---@return ModelPart.textureType? textureType Returns the texture type stored for this layer if this layer is defined
+---@return string|Texture? source Returns the source stored for this layer if the texture type is either `"RESOURCE"` or `"CUSTOM"`
 ---@nodiscard
 function ModelPart:getTextureLayer(layer)
 	if not layer or layer ~= math.clamp(layer, 1, 32) then error("Invalid layer index: " .. tostring(layer), 2) end
@@ -269,7 +275,7 @@ end
 ---Sets the render type of this part at the given layer.
 ---
 ---This part inherits from its parent if `renderType` is `nil`.
----@param layer integer
+---@param layer integer Target layer index
 ---@param renderType ModelPart.renderType?
 ---@return self
 function ModelPart:setRenderTypeLayer(layer, renderType)
@@ -286,7 +292,7 @@ end
 ---Gets the render type of this part at the given layer.
 ---
 ---Returns `nil` if it is inheriting from its parent.
----@param layer integer
+---@param layer integer Target layer index
 ---@return ModelPart.renderType?
 ---@nodiscard
 function ModelPart:getRenderTypeLayer(layer)
@@ -322,7 +328,7 @@ end
 ---This is a multiplier, that means that `1, 1, 1` will result in no change and `0, 0, 0` will result in black.
 ---
 ---If a color channel is nil, it will default to `1`.
----@param layer integer
+---@param layer integer Target layer index
 ---@param r number|Vector3?
 ---@param g number?
 ---@param b number?
@@ -343,7 +349,7 @@ end
 ---Gets the color multiplier of this part.
 ---
 ---This is a multiplier, that means that `1, 1, 1` will result in no change and `0, 0, 0` will result in black.
----@param layer integer
+---@param layer integer Target layer index
 ---@return Vector3
 ---@nodiscard
 function ModelPart:getColorLayer(layer)

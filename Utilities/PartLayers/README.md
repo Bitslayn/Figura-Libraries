@@ -5,8 +5,11 @@
 ## Guide
 
 ## Documentation
+<details>
 
-### `ModelPart:setTextureLayer(layer, textureType, source)`
+<summary><code>ModelPart:setTextureLayer()</code></summary>
+
+**Aliases:** `ModelPart:textureLayer()`
 
 Sets the texture layer of this part.
 
@@ -14,7 +17,11 @@ Layers can be removed if a texture type isn't provided when calling this method.
 
 A custom texture type requires a Texture in the source field. Similarly, a resource string is required for the resource texture type.
 
-#### Fields:
+#### Parameters:
+
+```lua
+ModelPart:setTextureLayer(layer, textureType, source)
+```
 
 | Name | Type(s) | Description |
 | - | - | - |
@@ -58,3 +65,42 @@ local pride_pin = textures["pride_pin"]
 
 jacket:setTextureLayer(3, "CUSTOM", pride_pin)
 ```
+
+</details>
+<details>
+
+<summary><code>ModelPart:getTextureLayer()</code></summary>
+
+Gets the texture layer of this part.
+
+#### Parameters:
+
+```lua
+ModelPart:setTextureLayer(layer)
+```
+
+| Name | Type(s) | Description |
+| - | - | - |
+| layer | integer | Target layer index |
+
+#### Returns:
+
+> [!IMPORTANT]  
+> Method returns should not be discarded
+
+| Name | Type(s) | Description |
+| - | - | - |
+| textureType | [ModelPart](https://figura-wiki.pages.dev/globals/Models) | Returns the texture type stored for this layer if this layer is defined |
+| source | string or [Texture](https://figura-wiki.pages.dev/globals/Textures/Texture) (Optional) | Returns the source stored for this layer if the texture type is either `"RESOURCE"` or `"CUSTOM"` |
+
+#### Example:
+
+```lua
+local jacket = models.model.root.Body.Jacket
+
+local textureType, source = jacket:getTextureLayer(3)
+
+print(textureType, source)
+```
+
+</details>
