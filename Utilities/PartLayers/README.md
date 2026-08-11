@@ -30,14 +30,14 @@ jacket:setTextureLayer(3, "CUSTOM", pride_pin)
 ```
 |Name|Type(s)|Description|
 |-|-|-|
-|self|ModelPart|-|
+|self|[ModelPart](https://figura-wiki.pages.dev/globals/Models)|-|
 |layer|integer|Target layer index|
-|textureType|(ModelPart.textureType)?|Defaults to `"PRIMARY"` or `"SECONDARY"`|
-|source|(string\|Texture)?|Required for `"RESOURCE"` and `"CUSTOM"` texture types|
+|textureType|[ModelPart.textureType](https://figura-wiki.pages.dev/enums/TextureTypes) (Optional)|Defaults to `"PRIMARY"` or `"SECONDARY"`|
+|source|string or [Texture](https://figura-wiki.pages.dev/globals/Textures/Texture) (Optional)|Required for `"RESOURCE"` and `"CUSTOM"` texture types|
 #### Returns:
 |Name|Type(s)|Description|
 |-|-|-|
-|-|ModelPart|Returns `self` for chaining|
+|-|[ModelPart](https://figura-wiki.pages.dev/globals/Models)|Returns `self` for chaining|
 </details>
 <details>
 
@@ -60,13 +60,13 @@ print(textureType, source)
 ```
 |Name|Type(s)|Description|
 |-|-|-|
-|self|ModelPart|-|
+|self|[ModelPart](https://figura-wiki.pages.dev/globals/Models)|-|
 |layer|integer|Target layer index|
 #### Returns:
 |Name|Type(s)|Description|
 |-|-|-|
-|textureType|(ModelPart.textureType)?|Returns the texture type stored for this layer if this layer is defined|
-|source|(string\|Texture)?|Returns the source stored for this layer if the texture type is either `"RESOURCE"` or `"CUSTOM"`|
+|textureType|[ModelPart.textureType](https://figura-wiki.pages.dev/enums/TextureTypes) (Optional)|Returns the texture type stored for this layer if this layer is defined|
+|source|string or [Texture](https://figura-wiki.pages.dev/globals/Textures/Texture) (Optional)|Returns the source stored for this layer if the texture type is either `"RESOURCE"` or `"CUSTOM"`|
 </details>
 <details>
 
@@ -83,11 +83,11 @@ Also returns the number of texture layers currently applied.
 ```
 |Name|Type(s)|Description|
 |-|-|-|
-|self|ModelPart|-|
+|self|[ModelPart](https://figura-wiki.pages.dev/globals/Models)|-|
 #### Returns:
 |Name|Type(s)|Description|
 |-|-|-|
-|-|((string\|Texture)?)[]|-|
+|-|string or [Texture](https://figura-wiki.pages.dev/globals/Textures/Texture) array (Optional fields)|-|
 |-|integer|-|
 </details>
 <details>
@@ -106,13 +106,13 @@ This part inherits from its parent if `renderType` is `nil`.
 ```
 |Name|Type(s)|Description|
 |-|-|-|
-|self|ModelPart|-|
+|self|[ModelPart](https://figura-wiki.pages.dev/globals/Models)|-|
 |layer|integer|Target layer index|
-|renderType|(ModelPart.renderType)?|-|
+|renderType|[ModelPart.renderType](https://figura-wiki.pages.dev/enums/RenderTypes) (Optional)|-|
 #### Returns:
 |Name|Type(s)|Description|
 |-|-|-|
-|-|ModelPart|-|
+|-|[ModelPart](https://figura-wiki.pages.dev/globals/Models)|-|
 </details>
 <details>
 
@@ -128,12 +128,12 @@ Returns `nil` if it is inheriting from its parent.
 ```
 |Name|Type(s)|Description|
 |-|-|-|
-|self|ModelPart|-|
+|self|[ModelPart](https://figura-wiki.pages.dev/globals/Models)|-|
 |layer|integer|Target layer index|
 #### Returns:
 |Name|Type(s)|Description|
 |-|-|-|
-|-|(ModelPart.renderType)?|-|
+|-|[ModelPart.renderType](https://figura-wiki.pages.dev/enums/RenderTypes) (Optional)|-|
 </details>
 <details>
 
@@ -153,14 +153,14 @@ If a color channel is nil, it will default to `1`.
 ```
 |Name|Type(s)|Description|
 |-|-|-|
-|self|ModelPart|-|
-|r|(number\|Vector3)?|-|
+|self|[ModelPart](https://figura-wiki.pages.dev/globals/Models)|-|
+|r|number or [Vector3](https://figura-wiki.pages.dev/globals/Vectors/Vector3) (Optional)|-|
 |g|number?|-|
 |b|number?|-|
 #### Returns:
 |Name|Type(s)|Description|
 |-|-|-|
-|-|ModelPart|-|
+|-|[ModelPart](https://figura-wiki.pages.dev/globals/Models)|-|
 </details>
 <details>
 
@@ -180,15 +180,15 @@ If a color channel is nil, it will default to `1`.
 ```
 |Name|Type(s)|Description|
 |-|-|-|
-|self|ModelPart|-|
+|self|[ModelPart](https://figura-wiki.pages.dev/globals/Models)|-|
 |layer|integer|Target layer index|
-|r|(number\|Vector3)?|-|
+|r|number or [Vector3](https://figura-wiki.pages.dev/globals/Vectors/Vector3) (Optional)|-|
 |g|number?|-|
 |b|number?|-|
 #### Returns:
 |Name|Type(s)|Description|
 |-|-|-|
-|-|ModelPart|-|
+|-|[ModelPart](https://figura-wiki.pages.dev/globals/Models)|-|
 </details>
 <details>
 
@@ -204,10 +204,10 @@ This is a multiplier, that means that `1, 1, 1` will result in no change and `0,
 ```
 |Name|Type(s)|Description|
 |-|-|-|
-|self|ModelPart|-|
+|self|[ModelPart](https://figura-wiki.pages.dev/globals/Models)|-|
 |layer|integer|Target layer index|
 #### Returns:
 |Name|Type(s)|Description|
 |-|-|-|
-|-|Vector3|-|
+|-|[Vector3](https://figura-wiki.pages.dev/globals/Vectors/Vector3)|-|
 </details>
