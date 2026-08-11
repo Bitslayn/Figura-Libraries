@@ -69,7 +69,6 @@ local defaults = {
 ---Creates a new layer object for this ModelPart
 ---@param root ModelPart
 ---@return FOXPartLayers.Part
----@nodiscard
 local function new(root)
 	---@type FOXPartLayers.Part
 	managed[root] = {
@@ -83,7 +82,7 @@ local function new(root)
 		},
 		bitmask = 3,
 		depth = 2,
-		task = root:newPart("task"),
+		task = root:newPart("RenderTask (PartLayers)"),
 	}
 
 	return managed[root]
@@ -170,13 +169,43 @@ local function apply(obj)
 	end
 end
 
----Queues layer application
+---Links parts so they can inherit layers
+---@param chld FOXPartLayers.Part
+---@param parn FOXPartLayers.Part
+local function link(chld, parn)
+	chld.bitmask = bit32.bor(parn.bitmask, chld.bitmask)
+	chld.depth = math.floor(math.log(chld.bitmask, 2)) + 1
+
+	for key in pairs(chld.layers) do
+		setmetatable(chld.layers[key], { __index = parn.layers[key] })
+	end
+end
+
+---Queues layer application and applies layer inheritance
 ---@param obj FOXPartLayers.Part
 local function queue(obj)
-	function obj.task.preRender()
-		apply(obj)
-		obj.task.preRender = nil
+	---@param parn ModelPart
+	local function recurse(parn)
+		if parn:getName():find("%(PartLayers%)$") then return end
+
+		for _, chld in ipairs(parn:getChildren()) do
+			if not managed[chld] then new(chld) end
+
+			link(managed[chld], managed[parn])
+
+			if chld:getType() == "GROUP" then
+				recurse(chld)
+			else
+				local _obj = managed[chld]
+				function _obj.task.preRender()
+					apply(_obj)
+					_obj.task.preRender = nil
+				end
+			end
+		end
 	end
+
+	recurse(obj.parts[1])
 end
 
 --#ENDREGION
