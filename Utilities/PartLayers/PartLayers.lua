@@ -47,7 +47,7 @@ end
 ---@field layers FOXPartLayers.Layers ModelPart customizations by layer
 ---@field bitmask integer
 ---@field depth integer Number of layers applied to this part
----@field task ModelPart Render event holder
+---@field queue ModelPart? Render event holder
 
 ---@class FOXPartLayers.Layers
 ---@field textures (string|Texture?)[]
@@ -82,7 +82,6 @@ local function new(root)
 		},
 		bitmask = 3,
 		depth = 2,
-		task = root:newPart("RenderTask (PartLayers)"),
 	}
 
 	return managed[root]
@@ -184,11 +183,12 @@ end
 ---Queues layer application and applies layer inheritance
 ---@param obj FOXPartLayers.Part
 local function queue(obj)
-	function obj.task.preRender()
+	if obj.queue then return end
+	obj.queue = obj.parts[1]:newPart("")
+
+	function obj.queue.preRender()
 		---@param parn ModelPart
 		local function recurse(parn)
-			if parn:getName():find("%(PartLayers%)$") then return end
-
 			for _, chld in ipairs(parn:getChildren()) do
 				if not managed[chld] then new(chld) end
 
@@ -203,7 +203,9 @@ local function queue(obj)
 		end
 
 		recurse(obj.parts[1])
-		obj.task.preRender = nil
+
+		obj.queue:remove()
+		obj.queue = nil
 	end
 end
 
