@@ -26,7 +26,7 @@ jacket:setTextureLayer(3, "CUSTOM", pride_pin)
 #### Parameters:
 ```lua
 (method) ModelPart:setTextureLayer(layer: integer, textureType?: ModelPart.textureType, source?: string|Texture)
-  -> ModelPart
+  -> self: ModelPart
 ```
 |Name|Type(s)|Description|
 |-|-|-|
@@ -37,7 +37,7 @@ jacket:setTextureLayer(3, "CUSTOM", pride_pin)
 #### Returns:
 |Name|Type(s)|Description|
 |-|-|-|
-|-|[ModelPart](https://figura-wiki.pages.dev/globals/Models)|Returns `self` for chaining|
+|self|[ModelPart](https://figura-wiki.pages.dev/globals/Models)|Returns `self` for chaining|
 </details>
 <details>
 
@@ -114,17 +114,17 @@ jacket:setRenderTypeLayer(3, "EYES")
 #### Parameters:
 ```lua
 (method) ModelPart:setRenderTypeLayer(layer: integer, renderType?: ModelPart.renderType)
-  -> ModelPart
+  -> self: ModelPart
 ```
 |Name|Type(s)|Description|
 |-|-|-|
 |self|[ModelPart](https://figura-wiki.pages.dev/globals/Models)|-|
 |layer|integer|Target layer index|
-|renderType|[ModelPart.renderType](https://figura-wiki.pages.dev/enums/RenderTypes) (Optional)|-|
+|renderType|[ModelPart.renderType](https://figura-wiki.pages.dev/enums/RenderTypes) (Optional)|Defaults to `"EMISSIVE"` for layer 2, but otherwise `"TRANSLUCENT"`|
 #### Returns:
 |Name|Type(s)|Description|
 |-|-|-|
-|-|[ModelPart](https://figura-wiki.pages.dev/globals/Models)|Returns `self` for chaining|
+|self|[ModelPart](https://figura-wiki.pages.dev/globals/Models)|Returns `self` for chaining|
 </details>
 <details>
 
@@ -172,7 +172,7 @@ jacket:setColor(red)
 #### Parameters:
 ```lua
 (method) ModelPart:setColor(r?: number|Vector3, g?: number, b?: number)
-  -> ModelPart
+  -> self: ModelPart
 ```
 |Name|Type(s)|Description|
 |-|-|-|
@@ -183,7 +183,7 @@ jacket:setColor(red)
 #### Returns:
 |Name|Type(s)|Description|
 |-|-|-|
-|-|[ModelPart](https://figura-wiki.pages.dev/globals/Models)|Returns `self` for chaining|
+|self|[ModelPart](https://figura-wiki.pages.dev/globals/Models)|Returns `self` for chaining|
 </details>
 <details>
 
@@ -204,7 +204,7 @@ jacket:setColorLayer(3, red)
 #### Parameters:
 ```lua
 (method) ModelPart:setColorLayer(layer: integer, r?: number|Vector3, g?: number, b?: number)
-  -> ModelPart
+  -> self: ModelPart
 ```
 |Name|Type(s)|Description|
 |-|-|-|
@@ -216,7 +216,7 @@ jacket:setColorLayer(3, red)
 #### Returns:
 |Name|Type(s)|Description|
 |-|-|-|
-|-|[ModelPart](https://figura-wiki.pages.dev/globals/Models)|Returns `self` for chaining|
+|self|[ModelPart](https://figura-wiki.pages.dev/globals/Models)|Returns `self` for chaining|
 </details>
 <details>
 

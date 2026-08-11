@@ -214,7 +214,7 @@ end
 ---@param source string|Texture? Required for `"RESOURCE"` and `"CUSTOM"` texture types
 ---@overload fun(self: ModelPart, layer: integer, textureType: "RESOURCE", source: string) The `"RESOURCE"` texture type requires a resource string in the source field
 ---@overload fun(self: ModelPart, layer: integer, textureType: "CUSTOM", source: Texture) The `"CUSTOM"` texture type requires a Texture in the source field
----@return self # Returns `self` for chaining
+---@return self self Returns `self` for chaining
 function ModelPart:setTextureLayer(layer, textureType, source)
 	if not layer or layer ~= math.clamp(layer, 1, 32) then error("Invalid layer index: " .. tostring(layer), 2) end
 	local obj = managed[self] or new(self)
@@ -287,8 +287,8 @@ end
 ---   jacket:setRenderTypeLayer(3, "EYES")
 ---```
 ---@param layer integer Target layer index
----@param renderType ModelPart.renderType?
----@return self # Returns `self` for chaining
+---@param renderType ModelPart.renderType? Defaults to `"EMISSIVE"` for layer 2, but otherwise `"TRANSLUCENT"`
+---@return self self Returns `self` for chaining
 function ModelPart:setRenderTypeLayer(layer, renderType)
 	if not layer or layer ~= math.clamp(layer, 1, 32) then error("Invalid layer index: " .. tostring(layer), 2) end
 	local obj = managed[self] or new(self)
@@ -334,7 +334,7 @@ end
 ---@param b number? Defaults to `1`
 ---@overload fun(self: ModelPart, layer: integer, r: number?, g: number?, b: number?): ModelPart
 ---@overload fun(self: ModelPart, layer: integer, col: Vector3?): ModelPart
----@return self # Returns `self` for chaining
+---@return self self Returns `self` for chaining
 function ModelPart:setColor(r, g, b)
 	local obj = managed[self] or new(self)
 
@@ -361,7 +361,7 @@ end
 ---@param b number? Defaults to `1`
 ---@overload fun(self: ModelPart, layer: integer, r: number?, g: number?, b: number?): ModelPart
 ---@overload fun(self: ModelPart, layer: integer, col: Vector3?): ModelPart
----@return self # Returns `self` for chaining
+---@return self self Returns `self` for chaining
 function ModelPart:setColorLayer(layer, r, g, b)
 	if not layer or layer ~= math.clamp(layer, 1, 32) then error("Invalid layer index: " .. tostring(layer), 2) end
 	local obj = managed[self] or new(self)
