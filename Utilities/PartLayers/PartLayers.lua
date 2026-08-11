@@ -184,28 +184,27 @@ end
 ---Queues layer application and applies layer inheritance
 ---@param obj FOXPartLayers.Part
 local function queue(obj)
-	---@param parn ModelPart
-	local function recurse(parn)
-		if parn:getName():find("%(PartLayers%)$") then return end
+	function obj.task.preRender()
+		---@param parn ModelPart
+		local function recurse(parn)
+			if parn:getName():find("%(PartLayers%)$") then return end
 
-		for _, chld in ipairs(parn:getChildren()) do
-			if not managed[chld] then new(chld) end
+			for _, chld in ipairs(parn:getChildren()) do
+				if not managed[chld] then new(chld) end
 
-			link(managed[chld], managed[parn])
+				link(managed[chld], managed[parn])
 
-			if chld:getType() == "GROUP" then
-				recurse(chld)
-			else
-				local _obj = managed[chld]
-				function _obj.task.preRender()
-					apply(_obj)
-					_obj.task.preRender = nil
+				if chld:getType() == "GROUP" then
+					recurse(chld)
+				else
+					apply(managed[chld])
 				end
 			end
 		end
-	end
 
-	recurse(obj.parts[1])
+		recurse(obj.parts[1])
+		obj.task.preRender = nil
+	end
 end
 
 --#ENDREGION
