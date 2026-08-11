@@ -249,21 +249,29 @@ end
 ---   print(textureType, source)
 ---```
 ---@param layer integer Target layer index
----@return ModelPart.textureType? textureType Returns the texture type stored for this layer if this layer is defined
+---@return ModelPart.textureType? textureType Returns the texture type stored for this layer if a texture is defined
 ---@return string|Texture? source Returns the source stored for this layer if the texture type is either `"RESOURCE"` or `"CUSTOM"`
 ---@nodiscard
 function ModelPart:getTextureLayer(layer)
 	if not layer or layer ~= math.clamp(layer, 1, 32) then error("Invalid layer index: " .. tostring(layer), 2) end
 	local obj = managed[self] or new(self)
 
-	return obj.layers.textureTypes[layer], obj.layers.textures[layer]
+	return rawget(obj.layers.textureTypes, layer), rawget(obj.layers.textures, layer)
 end
 
 ---Gets a list of all textures applied to this ModelPart indexed by its layer.
 ---
 ---Also returns the number of texture layers currently applied.
----@return (string|Texture?)[]
----@return integer
+---
+---```lua
+---   local jacket = models.model.root.Body.Jacket
+---
+---   local textures, depth = jacket:getTextureLayers()
+---
+---   print(textures, depth)
+---```
+---@return (string|Texture?)[] textures Returns the list of textures excluding inherited ones
+---@return integer depth Returns the number of textures currently applied to this part
 ---@nodiscard
 function ModelPart:getTextureLayers()
 	local obj = managed[self] or new(self)
@@ -273,10 +281,14 @@ end
 
 ---Sets the render type of this part at the given layer.
 ---
----This part inherits from its parent if `renderType` is `nil`.
+---```lua
+---   local jacket = models.model.root.Body.Jacket
+---
+---   jacket:setRenderTypeLayer(3, "EYES")
+---```
 ---@param layer integer Target layer index
 ---@param renderType ModelPart.renderType?
----@return self
+---@return self # Returns `self` for chaining
 function ModelPart:setRenderTypeLayer(layer, renderType)
 	if not layer or layer ~= math.clamp(layer, 1, 32) then error("Invalid layer index: " .. tostring(layer), 2) end
 	local obj = managed[self] or new(self)
@@ -290,28 +302,39 @@ end
 
 ---Gets the render type of this part at the given layer.
 ---
----Returns `nil` if it is inheriting from its parent.
+---```lua
+---   local jacket = models.model.root.Body.Jacket
+---
+---   local renderType = jacket:getRenderTypeLayer()
+---
+---   print(renderType)
+---```
 ---@param layer integer Target layer index
----@return ModelPart.renderType?
+---@return ModelPart.renderType? renderType Returns the render type stored for this layer if a render type is defined
 ---@nodiscard
 function ModelPart:getRenderTypeLayer(layer)
 	if not layer or layer ~= math.clamp(layer, 1, 32) then error("Invalid layer index: " .. tostring(layer), 2) end
 	local obj = managed[self] or new(self)
 
-	return obj.layers.renderTypes[layer]
+	return rawget(obj.layers.renderTypes, layer)
 end
 
----Sets the color multiplier of this part.
+---Sets the texture tint color of this part.
 ---
----This is a multiplier, that means that `1, 1, 1` will result in no change and `0, 0, 0` will result in black.
+---The last two parameters are ignored when a vector color is given.
 ---
----If a color channel is nil, it will default to `1`.
----@param r number|Vector3?
----@param g number?
----@param b number?
+---```lua
+---   local jacket = models.model.root.Body.Jacket
+---   local red = vectors.hexToRGB("red")
+---
+---   jacket:setColor(red)
+---```
+---@param r number|Vector3? Defaults to `1`
+---@param g number? Defaults to `1`
+---@param b number? Defaults to `1`
 ---@overload fun(self: ModelPart, layer: integer, r: number?, g: number?, b: number?): ModelPart
 ---@overload fun(self: ModelPart, layer: integer, col: Vector3?): ModelPart
----@return self
+---@return self # Returns `self` for chaining
 function ModelPart:setColor(r, g, b)
 	local obj = managed[self] or new(self)
 
@@ -322,18 +345,23 @@ function ModelPart:setColor(r, g, b)
 	return self
 end
 
----Sets the color multiplier of this part at the given layer.
+---Sets the texture tint color of this part at the given layer.
 ---
----This is a multiplier, that means that `1, 1, 1` will result in no change and `0, 0, 0` will result in black.
+---The last two parameters are ignored when a vector color is given.
 ---
----If a color channel is nil, it will default to `1`.
+---```lua
+---   local jacket = models.model.root.Body.Jacket
+---   local red = vectors.hexToRGB("red")
+---
+---   jacket:setColorLayer(3, red)
+---```
 ---@param layer integer Target layer index
----@param r number|Vector3?
----@param g number?
----@param b number?
+---@param r number|Vector3? Defaults to `1`
+---@param g number? Defaults to `1`
+---@param b number? Defaults to `1`
 ---@overload fun(self: ModelPart, layer: integer, r: number?, g: number?, b: number?): ModelPart
 ---@overload fun(self: ModelPart, layer: integer, col: Vector3?): ModelPart
----@return self
+---@return self # Returns `self` for chaining
 function ModelPart:setColorLayer(layer, r, g, b)
 	if not layer or layer ~= math.clamp(layer, 1, 32) then error("Invalid layer index: " .. tostring(layer), 2) end
 	local obj = managed[self] or new(self)
@@ -345,17 +373,25 @@ function ModelPart:setColorLayer(layer, r, g, b)
 	return self
 end
 
----Gets the color multiplier of this part.
+---Gets the texture tint color of this part.
 ---
----This is a multiplier, that means that `1, 1, 1` will result in no change and `0, 0, 0` will result in black.
+---```lua
+---   local jacket = models.model.root.Body.Jacket
+---
+---   local color = jacket:getColorLayer(3)
+---
+---   print(color)
+---```
 ---@param layer integer Target layer index
----@return Vector3
+---@return Vector3 color Returns the color stored for this layer if a color is defined
 ---@nodiscard
 function ModelPart:getColorLayer(layer)
 	if not layer or layer ~= math.clamp(layer, 1, 32) then error("Invalid layer index: " .. tostring(layer), 2) end
 	local obj = managed[self] or new(self)
 
-	return obj.layers.colors[layer] and obj.layers.colors[layer]:copy() or obj.layers.colors[0]:copy()
+	local col = rawget(obj.layers.colors, layer) or rawget(obj.layers.colors, 0)
+
+	return col:copy()
 end
 
 --#ENDREGION -----------------------------------------------------------------------------------

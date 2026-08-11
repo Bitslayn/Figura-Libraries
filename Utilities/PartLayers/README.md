@@ -65,7 +65,7 @@ print(textureType, source)
 #### Returns:
 |Name|Type(s)|Description|
 |-|-|-|
-|textureType|[ModelPart.textureType](https://figura-wiki.pages.dev/enums/TextureTypes) (Optional)|Returns the texture type stored for this layer if this layer is defined|
+|textureType|[ModelPart.textureType](https://figura-wiki.pages.dev/enums/TextureTypes) (Optional)|Returns the texture type stored for this layer if a texture is defined|
 |source|string or [Texture](https://figura-wiki.pages.dev/globals/Textures/Texture) (Optional)|Returns the source stored for this layer if the texture type is either `"RESOURCE"` or `"CUSTOM"`|
 </details>
 <details>
@@ -75,11 +75,19 @@ print(textureType, source)
 Gets a list of all textures applied to this ModelPart indexed by its layer.
 
 Also returns the number of texture layers currently applied.
+
+```lua
+local jacket = models.model.root.Body.Jacket
+
+local textures, depth = jacket:getTextureLayers()
+
+print(textures, depth)
+```
 #### Parameters:
 ```lua
 (method) ModelPart:getTextureLayers()
-  -> ((string|Texture)?)[]
-  2. integer
+  -> textures: ((string|Texture)?)[]
+  2. depth: integer
 ```
 |Name|Type(s)|Description|
 |-|-|-|
@@ -87,8 +95,8 @@ Also returns the number of texture layers currently applied.
 #### Returns:
 |Name|Type(s)|Description|
 |-|-|-|
-|-|string or [Texture](https://figura-wiki.pages.dev/globals/Textures/Texture) array (Optional fields)|-|
-|-|integer|-|
+|textures|string or [Texture](https://figura-wiki.pages.dev/globals/Textures/Texture) array (Optional fields)|Returns the list of textures excluding inherited ones|
+|depth|integer|Returns the number of textures currently applied to this part|
 </details>
 <details>
 
@@ -98,7 +106,11 @@ Also returns the number of texture layers currently applied.
 
 Sets the render type of this part at the given layer.
 
-This part inherits from its parent if `renderType` is `nil`.
+```lua
+local jacket = models.model.root.Body.Jacket
+
+jacket:setRenderTypeLayer(3, "EYES")
+```
 #### Parameters:
 ```lua
 (method) ModelPart:setRenderTypeLayer(layer: integer, renderType?: ModelPart.renderType)
@@ -112,7 +124,7 @@ This part inherits from its parent if `renderType` is `nil`.
 #### Returns:
 |Name|Type(s)|Description|
 |-|-|-|
-|-|[ModelPart](https://figura-wiki.pages.dev/globals/Models)|-|
+|-|[ModelPart](https://figura-wiki.pages.dev/globals/Models)|Returns `self` for chaining|
 </details>
 <details>
 
@@ -120,11 +132,17 @@ This part inherits from its parent if `renderType` is `nil`.
 
 Gets the render type of this part at the given layer.
 
-Returns `nil` if it is inheriting from its parent.
+```lua
+local jacket = models.model.root.Body.Jacket
+
+local renderType = jacket:getRenderTypeLayer()
+
+print(renderType)
+```
 #### Parameters:
 ```lua
 (method) ModelPart:getRenderTypeLayer(layer: integer)
-  -> (ModelPart.renderType)?
+  -> renderType: (ModelPart.renderType)?
 ```
 |Name|Type(s)|Description|
 |-|-|-|
@@ -133,7 +151,7 @@ Returns `nil` if it is inheriting from its parent.
 #### Returns:
 |Name|Type(s)|Description|
 |-|-|-|
-|-|[ModelPart.renderType](https://figura-wiki.pages.dev/enums/RenderTypes) (Optional)|-|
+|renderType|[ModelPart.renderType](https://figura-wiki.pages.dev/enums/RenderTypes) (Optional)|Returns the render type stored for this layer if a render type is defined|
 </details>
 <details>
 
@@ -141,11 +159,16 @@ Returns `nil` if it is inheriting from its parent.
 
 **Aliases:** `ModelPart:color()`
 
-Sets the color multiplier of this part.
+Sets the texture tint color of this part.
 
-This is a multiplier, that means that `1, 1, 1` will result in no change and `0, 0, 0` will result in black.
+The last two parameters are ignored when a vector color is given.
 
-If a color channel is nil, it will default to `1`.
+```lua
+local jacket = models.model.root.Body.Jacket
+local red = vectors.hexToRGB("red")
+
+jacket:setColor(red)
+```
 #### Parameters:
 ```lua
 (method) ModelPart:setColor(r?: number|Vector3, g?: number, b?: number)
@@ -154,13 +177,13 @@ If a color channel is nil, it will default to `1`.
 |Name|Type(s)|Description|
 |-|-|-|
 |self|[ModelPart](https://figura-wiki.pages.dev/globals/Models)|-|
-|r|number or [Vector3](https://figura-wiki.pages.dev/globals/Vectors/Vector3) (Optional)|-|
-|g|number (Optional)|-|
-|b|number (Optional)|-|
+|r|number or [Vector3](https://figura-wiki.pages.dev/globals/Vectors/Vector3) (Optional)|Defaults to `1`|
+|g|number (Optional)|Defaults to `1`|
+|b|number (Optional)|Defaults to `1`|
 #### Returns:
 |Name|Type(s)|Description|
 |-|-|-|
-|-|[ModelPart](https://figura-wiki.pages.dev/globals/Models)|-|
+|-|[ModelPart](https://figura-wiki.pages.dev/globals/Models)|Returns `self` for chaining|
 </details>
 <details>
 
@@ -168,11 +191,16 @@ If a color channel is nil, it will default to `1`.
 
 **Aliases:** `ModelPart:colorLayer()`
 
-Sets the color multiplier of this part at the given layer.
+Sets the texture tint color of this part at the given layer.
 
-This is a multiplier, that means that `1, 1, 1` will result in no change and `0, 0, 0` will result in black.
+The last two parameters are ignored when a vector color is given.
 
-If a color channel is nil, it will default to `1`.
+```lua
+local jacket = models.model.root.Body.Jacket
+local red = vectors.hexToRGB("red")
+
+jacket:setColorLayer(3, red)
+```
 #### Parameters:
 ```lua
 (method) ModelPart:setColorLayer(layer: integer, r?: number|Vector3, g?: number, b?: number)
@@ -182,25 +210,31 @@ If a color channel is nil, it will default to `1`.
 |-|-|-|
 |self|[ModelPart](https://figura-wiki.pages.dev/globals/Models)|-|
 |layer|integer|Target layer index|
-|r|number or [Vector3](https://figura-wiki.pages.dev/globals/Vectors/Vector3) (Optional)|-|
-|g|number (Optional)|-|
-|b|number (Optional)|-|
+|r|number or [Vector3](https://figura-wiki.pages.dev/globals/Vectors/Vector3) (Optional)|Defaults to `1`|
+|g|number (Optional)|Defaults to `1`|
+|b|number (Optional)|Defaults to `1`|
 #### Returns:
 |Name|Type(s)|Description|
 |-|-|-|
-|-|[ModelPart](https://figura-wiki.pages.dev/globals/Models)|-|
+|-|[ModelPart](https://figura-wiki.pages.dev/globals/Models)|Returns `self` for chaining|
 </details>
 <details>
 
 <summary><code>ModelPart:getColorLayer()</code></summary>
 
-Gets the color multiplier of this part.
+Gets the texture tint color of this part.
 
-This is a multiplier, that means that `1, 1, 1` will result in no change and `0, 0, 0` will result in black.
+```lua
+local jacket = models.model.root.Body.Jacket
+
+local color = jacket:getColorLayer(3)
+
+print(color)
+```
 #### Parameters:
 ```lua
 (method) ModelPart:getColorLayer(layer: integer)
-  -> Vector3
+  -> color: Vector3
 ```
 |Name|Type(s)|Description|
 |-|-|-|
@@ -209,5 +243,5 @@ This is a multiplier, that means that `1, 1, 1` will result in no change and `0,
 #### Returns:
 |Name|Type(s)|Description|
 |-|-|-|
-|-|[Vector3](https://figura-wiki.pages.dev/globals/Vectors/Vector3)|-|
+|color|[Vector3](https://figura-wiki.pages.dev/globals/Vectors/Vector3)|Returns the color stored for this layer if a color is defined|
 </details>
