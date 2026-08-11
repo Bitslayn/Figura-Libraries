@@ -155,8 +155,8 @@ If a color channel is nil, it will default to `1`.
 |-|-|-|
 |self|[ModelPart](https://figura-wiki.pages.dev/globals/Models)|-|
 |r|number or [Vector3](https://figura-wiki.pages.dev/globals/Vectors/Vector3) (Optional)|-|
-|g|number?|-|
-|b|number?|-|
+|g|number (Optional)|-|
+|b|number (Optional)|-|
 #### Returns:
 |Name|Type(s)|Description|
 |-|-|-|
@@ -183,8 +183,8 @@ If a color channel is nil, it will default to `1`.
 |self|[ModelPart](https://figura-wiki.pages.dev/globals/Models)|-|
 |layer|integer|Target layer index|
 |r|number or [Vector3](https://figura-wiki.pages.dev/globals/Vectors/Vector3) (Optional)|-|
-|g|number?|-|
-|b|number?|-|
+|g|number (Optional)|-|
+|b|number (Optional)|-|
 #### Returns:
 |Name|Type(s)|Description|
 |-|-|-|
