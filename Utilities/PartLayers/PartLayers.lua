@@ -3,7 +3,7 @@ ____  ___ __   __
 | __|/ _ \\ \ / /
 | _|| (_) |> w <
 |_|  \___//_/ \_\
-FOX's Part Layers v1.0-final-rc4-dev
+FOX's Part Layers v1.0-final-rc4
 
 Adds the ability to set unlimited Texture, RenderType, and Color layers to a ModelPart
 Injects into Figura's ModelPartAPI, adding layer methods, and replaces primary and secondary setters to use layers 1 and 2
