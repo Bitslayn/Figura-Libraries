@@ -37,6 +37,15 @@ local function color_args(r, g, b)
 	return vec3():set(r)
 end
 
+---Use Manuel's Task if this is present
+local ok, Task = pcall(require, "./task")
+Task = ok and Task or setmetatable({}, {
+	_call = function(a, b, c, d)
+		for i = a, b do c(i) end
+		if d then d() end
+	end,
+})
+
 --#ENDREGION --=================================================================================================================
 --#REGION ˚♡ FOXPartLayers ♡˚
 --==============================================================================================================================
@@ -94,13 +103,14 @@ end
 ---Grow or shrink ModelPart copy depth to desired depth
 ---@param obj FOXPartLayers.Part
 ---@param depth integer
-local function resize(obj, depth)
+---@param callback function
+local function resize(obj, depth, callback)
 	if depth == #obj.parts then return end
 
 	if depth > #obj.parts then
 		-- Grow
 
-		for i = #obj.parts + 1, depth do
+		Task(#obj.parts + 1, depth, function(i)
 			obj.parts[i] = obj.parts[i - 1]
 				:copy(obj.name)
 				:moveTo(obj.parts[i - 1])
@@ -109,14 +119,14 @@ local function resize(obj, depth)
 
 			primaryRenderType(obj.parts[i], "NONE")
 			secondaryRenderType(obj.parts[i], "NONE")
-		end
+		end, callback)
 	else
 		-- Shrink
 
-		for i = depth + 1, #obj.parts do
+		Task(depth + 1, #obj.parts, function(i)
 			obj.parts[i]:remove()
 			obj.parts[i] = nil
-		end
+		end, callback)
 	end
 end
 
@@ -153,19 +163,22 @@ end
 local function apply(obj)
 	---@type integer[]
 	local layers = {}
-	for i = 1, obj.depth do
+
+	Task(1, obj.depth, function(i)
 		layers[#layers + 1] = obj.layers.textureTypes[i] and i or nil
-	end
+	end, function()
+		local count = math.ceil(#layers / 2)
 
-	resize(obj, math.ceil(#layers / 2))
-
-	for i = 1, #obj.parts * 2 do
-		local curr_layer = layers[i]
-		local prev_layer = layers[i - 1]
-		local part = obj.parts[(i - 1) % #obj.parts + 1]
-		local primary = i <= #obj.parts
-		set(obj, curr_layer, prev_layer, part, primary)
-	end
+		resize(obj, count, function()
+			Task(1, count * 2, function(i)
+				local curr_layer = layers[i]
+				local prev_layer = layers[i - 1]
+				local part = obj.parts[(i - 1) % count + 1]
+				local primary = i <= count
+				set(obj, curr_layer, prev_layer, part, primary)
+			end)
+		end)
+	end)
 end
 
 ---Links parts so they can inherit layers
@@ -190,7 +203,7 @@ local function queue(obj)
 	---@param parent ModelPart
 	local function recurse(parent)
 		local children = parent:getChildren()
-		for i = 1, #children do
+		Task(1, #children, function(i)
 			local child = children[i]
 			if not managed[child] then new(child) end
 
@@ -201,7 +214,7 @@ local function queue(obj)
 			else
 				apply(managed[child])
 			end
-		end
+		end)
 	end
 
 	function obj.queue.postRender()
