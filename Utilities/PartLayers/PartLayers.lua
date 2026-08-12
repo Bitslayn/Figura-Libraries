@@ -3,7 +3,7 @@ ____  ___ __   __
 | __|/ _ \\ \ / /
 | _|| (_) |> w <
 |_|  \___//_/ \_\
-FOX's Part Layers v1.0-final-rc4
+FOX's Part Layers v1.0-final-rc5
 
 Adds the ability to set unlimited Texture, RenderType, and Color layers to a ModelPart
 Injects into Figura's ModelPartAPI, adding layer methods, and replaces primary and secondary setters to use layers 1 and 2
@@ -105,7 +105,10 @@ end
 ---@param depth integer
 ---@param callback function
 local function resize(obj, depth, callback)
-	if depth == #obj.parts then return end
+	if depth == #obj.parts then
+		callback()
+		return
+	end
 
 	if depth > #obj.parts then
 		-- Grow
@@ -202,25 +205,26 @@ local function queue(obj)
 
 	---@param parent ModelPart
 	local function recurse(parent)
-		local children = parent:getChildren()
-		Task(1, #children, function(i)
-			local child = children[i]
-			if child == obj.queue then return end
-			if not managed[child] then new(child) end
+		if parent:getType() == "GROUP" then
+			local children = parent:getChildren()
+			Task(1, #children, function(i)
+				local child = children[i]
+				assert(child ~= obj.queue, "Create a bug report if you are seeing this error")
+				if not managed[child] then new(child) end
 
-			link(managed[child], managed[parent])
+				link(managed[child], managed[parent])
 
-			if child:getType() == "GROUP" then
 				recurse(child)
-			else
-				apply(managed[child])
-			end
-		end)
+			end)
+		else
+			apply(managed[parent])
+		end
 	end
 
 	function obj.queue.preRender()
 		recurse(obj.parts[1])
 
+		obj.queue.preRender = nil
 		obj.queue:remove()
 		obj.queue = nil
 	end
