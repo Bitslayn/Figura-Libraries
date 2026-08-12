@@ -40,7 +40,7 @@ end
 ---Use Manuel's Task if this is present
 local ok, Task = pcall(require, "./task")
 Task = ok and Task or setmetatable({}, {
-	_call = function(a, b, c, d)
+	__call = function(_, a, b, c, d)
 		for i = a, b do c(i) end
 		if d then d() end
 	end,
