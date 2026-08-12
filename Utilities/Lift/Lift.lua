@@ -9,7 +9,7 @@ A unique interactions protocol focusing on security
 Allows for interacting with the viewer with a whitelist
 Supports Extura, Goofy, Silly, or a custom addon
 
-Github: https://github.com/Bitslayn/FOX-s-Figura-APIs/blob/main/Utilities/Lift.lua
+Github: https://github.com/Bitslayn/FOX-s-Figura-APIs/blob/main/Utilities/Lift
 ]]
 
 --==============================================================================================================================
