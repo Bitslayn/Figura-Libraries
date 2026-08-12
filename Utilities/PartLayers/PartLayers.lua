@@ -205,6 +205,7 @@ local function queue(obj)
 		local children = parent:getChildren()
 		Task(1, #children, function(i)
 			local child = children[i]
+			if child == obj.queue then return end
 			if not managed[child] then new(child) end
 
 			link(managed[child], managed[parent])
@@ -217,7 +218,7 @@ local function queue(obj)
 		end)
 	end
 
-	function obj.queue.postRender()
+	function obj.queue.preRender()
 		recurse(obj.parts[1])
 
 		obj.queue:remove()
