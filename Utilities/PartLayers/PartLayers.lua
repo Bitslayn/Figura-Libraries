@@ -3,7 +3,7 @@ ____  ___ __   __
 | __|/ _ \\ \ / /
 | _|| (_) |> w <
 |_|  \___//_/ \_\
-FOX's Part Layers v1.0-final-rc4
+FOX's Part Layers v1.0-final-rc5-dev
 
 Adds the ability to set unlimited Texture, RenderType, and Color layers to a ModelPart
 Injects into Figura's ModelPartAPI, adding layer methods, and replaces primary and secondary setters to use layers 1 and 2
@@ -105,7 +105,10 @@ end
 ---@param depth integer
 ---@param callback function
 local function resize(obj, depth, callback)
-	if depth == #obj.parts then return end
+	if depth == #obj.parts then
+		callback()
+		return
+	end
 
 	if depth > #obj.parts then
 		-- Grow
@@ -221,6 +224,7 @@ local function queue(obj)
 	function obj.queue.preRender()
 		recurse(obj.parts[1])
 
+		obj.queue.preRender = nil
 		obj.queue:remove()
 		obj.queue = nil
 	end
