@@ -3,12 +3,12 @@ ____  ___ __   __
 | __|/ _ \\ \ / /
 | _|| (_) |> w <
 |_|  \___//_/ \_\
-FOX's Part Layers v1.0-final-rc3
+FOX's Part Layers v1.0-final-rc4
 
 Adds the ability to set unlimited Texture, RenderType, and Color layers to a ModelPart
 Injects into Figura's ModelPartAPI, adding layer methods, and replaces primary and secondary setters to use layers 1 and 2
 
-Github: https://github.com/Bitslayn/FOX-s-Figura-APIs/blob/main/Utilities/PartLayers.lua
+Github: https://github.com/Bitslayn/Figura-Libraries/tree/main/Utilities/PartLayers
 ]]
 
 --==============================================================================================================================
@@ -37,108 +37,116 @@ local function color_args(r, g, b)
 	return vec3():set(r)
 end
 
+---Use Manuel's Task if this is present
+local ok, Task = pcall(require, "./task")
+Task = ok and Task or setmetatable({}, {
+	__call = function(_, a, b, c, d)
+		for i = a, b do c(i) end
+		if d then d() end
+	end,
+})
+
 --#ENDREGION --=================================================================================================================
---#REGION ˚♡ Object ♡˚
+--#REGION ˚♡ FOXPartLayers ♡˚
 --==============================================================================================================================
 
----@type table<ModelPart, FOXPartLayers.Object>
+---@class FOXPartLayers.Part
+---@field name string Custom name given to copied parts
+---@field parts ModelPart[] List of all ModelParts used for layer rendering
+---@field layers FOXPartLayers.Layers ModelPart customizations by layer
+---@field bitmask integer
+---@field depth integer Number of layers applied to this part
+---@field queue ModelPart? Render event holder
+
+---@class FOXPartLayers.Layers
+---@field textures (string|Texture?)[]
+---@field textureTypes (ModelPart.textureType?)[]
+---@field renderTypes (ModelPart.renderType?)[]
+---@field colors table<integer, Vector3> [0] used for changing the default color on all layers
+
+---@type table<ModelPart, FOXPartLayers.Part>
 local managed = {}
+
+---@type FOXPartLayers.Layers
+local defaults = {
+	textures = {},
+	textureTypes = { "PRIMARY", "SECONDARY" },
+	renderTypes = setmetatable({ "TRANSLUCENT", "EMISSIVE" }, { __index = function() return "TRANSLUCENT" end }),
+	colors = setmetatable({ [0] = vec3(1, 1, 1) }, { __index = function() return vec3(1, 1, 1) end }),
+}
 
 ---Creates a new layer object for this ModelPart
 ---@param root ModelPart
----@return FOXPartLayers.Object
----@nodiscard
+---@return FOXPartLayers.Part
 local function new(root)
-	---@class FOXPartLayers.Object
+	---@type FOXPartLayers.Part
 	managed[root] = {
-		---The root ModelPart's name
-		---@type string
-		name = root:getName(),
-		---List of all ModelParts in this object
-		---@type ModelPart[]
+		name = root:getName() .. " (PartLayers)",
 		parts = { root },
-		---ModelPart texture varargs by layer
-		---@type table<integer, [ModelPart.textureType, string|Texture?]?>
-		textures = { {}, {} },
-		---ModelPart render types by layer
-		---@type (ModelPart.renderType?)[]
-		renderTypes = {},
-		---Root ModelPart color
-		---@type Vector3
-		color = root:getColor(),
-		---ModelPart colors by layer
-		---@type Vector3[]
-		colors = {},
-		---Render event holder
-		---@type ModelPart
-		task = root:newPart("task"),
+		layers = {
+			textures = setmetatable({}, { __index = defaults.textures }),
+			textureTypes = setmetatable({}, { __index = defaults.textureTypes }),
+			renderTypes = setmetatable({}, { __index = defaults.renderTypes }),
+			colors = setmetatable({}, { __index = defaults.colors }),
+		},
+		bitmask = 3,
+		depth = 2,
 	}
 
 	return managed[root]
 end
 
 ------------------------------------------------------------------------------------------------
---#REGION ˚♡ Object > Library ♡˚
+--#REGION ˚♡ FOXPartLayers > Render Algorithm ♡˚
 ------------------------------------------------------------------------------------------------
 
----Re-allocates the copies
----@param obj FOXPartLayers.Object
-local function realloc(obj)
-	-- Find depth for textures table with holes
+---Grow or shrink ModelPart copy depth to desired depth
+---@param obj FOXPartLayers.Part
+---@param depth integer
+---@param callback function
+local function resize(obj, depth, callback)
+	if depth == #obj.parts then return end
 
-	local depth = 0
-	for layer in pairs(obj.textures) do
-		depth = math.max(depth, layer)
-	end
+	if depth > #obj.parts then
+		-- Grow
 
-	local desired_depth = math.ceil(depth / 2)
-
-	-- Early return for unchanged size
-
-	if desired_depth == #obj.parts then return end
-
-	-- Grow or shrink modelpart copies
-
-	if desired_depth > #obj.parts then
-		for i = #obj.parts + 1, desired_depth do
+		Task(#obj.parts + 1, depth, function(i)
 			obj.parts[i] = obj.parts[i - 1]
-				:copy(("%s (PartLayers %d & %d)"):format(obj.name, i * 2 - 1, i * 2)) -- Fix for AST; obj.name .. " (PartLayers " .. i * 2 - 1 .. " & " .. i * 2 .. ")"
+				:copy(obj.name)
 				:moveTo(obj.parts[i - 1])
 				:parentType("NONE")
-				-- DEV NOTE: Niche Figura detail but the ModelPart matrix must be set after calling `parentType`. TL;DR this should always be called last.
 				:matrix(matrices.mat4())
 
 			primaryRenderType(obj.parts[i], "NONE")
 			secondaryRenderType(obj.parts[i], "NONE")
-		end
+		end, callback)
 	else
-		for i = desired_depth + 1, #obj.parts do
+		-- Shrink
+
+		Task(depth + 1, #obj.parts, function(i)
 			obj.parts[i]:remove()
 			obj.parts[i] = nil
-		end
+		end, callback)
 	end
 end
 
----Updates the current texture layer in this part
----@param obj FOXPartLayers.Object
+---Sets the texture, renderType, and color for a single layer
+---@param obj FOXPartLayers.Part
+---@param curr_layer integer
+---@param prev_layer integer
 ---@param part ModelPart
----@param layer integer
 ---@param primary boolean
-local function update(obj, part, layer, primary)
-	-- Gets the appropriate setter functions
-
+local function set(obj, curr_layer, prev_layer, part, primary)
 	local texture = primary and primaryTexture or secondaryTexture
 	local render_type = primary and primaryRenderType or secondaryRenderType
 	local color = primary and primaryColor or secondaryColor
 
-	-- Updates the layer's texture, render type, and color
+	if curr_layer then
+		texture(part, obj.layers.textureTypes[curr_layer], obj.layers.textures[curr_layer])
+		render_type(part, obj.layers.renderTypes[curr_layer])
 
-	if obj.textures[layer] then
-		texture(part, obj.textures[layer][1], obj.textures[layer][2])
-		render_type(part, obj.renderTypes[layer])
-
-		local old = obj.colors[layer - 1] or vec3(1, 1, 1) -- `1, 1, 1` fix for setColor, you cannot tint something that doesn't exist
-		local col = obj.colors[layer] or obj.color
+		local old = obj.layers.colors[prev_layer]
+		local col = obj.layers.colors[curr_layer]
 
 		if part == obj.parts[1] then
 			color(part, col + E)
@@ -150,22 +158,71 @@ local function update(obj, part, layer, primary)
 	end
 end
 
----Updates all texture layers of this part
----@param obj FOXPartLayers.Object
-local function interlace(obj)
-	for i = 1, #obj.parts * 2 do
-		update(obj, obj.parts[(i - 1) % #obj.parts + 1], i, i <= #obj.parts)
-	end
+---Applies changes to ModelParts, interlacing and flattening layers to use the least complexity
+---@param obj FOXPartLayers.Part
+local function apply(obj)
+	---@type integer[]
+	local layers = {}
+
+	Task(1, obj.depth, function(i)
+		layers[#layers + 1] = obj.layers.textureTypes[i] and i or nil
+	end, function()
+		local count = math.ceil(#layers / 2)
+
+		resize(obj, count, function()
+			Task(1, count * 2, function(i)
+				local curr_layer = layers[i]
+				local prev_layer = layers[i - 1]
+				local part = obj.parts[(i - 1) % count + 1]
+				local primary = i <= count
+				set(obj, curr_layer, prev_layer, part, primary)
+			end)
+		end)
+	end)
 end
 
----Queues realloc and interlace functions on this object
----@param obj FOXPartLayers.Object
-local function dirty(obj)
-	function obj.task.preRender()
-		realloc(obj)
-		interlace(obj)
+---Links parts so they can inherit layers
+---@param child FOXPartLayers.Part
+---@param parent FOXPartLayers.Part
+local function link(child, parent)
+	child.bitmask = bit32.bor(parent.bitmask, child.bitmask)
+	child.depth = math.floor(math.log(child.bitmask, 2)) + 1
 
-		obj.task.preRender = nil
+	setmetatable(child.layers.textures, { __index = parent.layers.textures })
+	setmetatable(child.layers.textureTypes, { __index = parent.layers.textureTypes })
+	setmetatable(child.layers.renderTypes, { __index = parent.layers.renderTypes })
+	setmetatable(child.layers.colors, { __index = parent.layers.colors })
+end
+
+---Queues layer application and applies layer inheritance
+---@param obj FOXPartLayers.Part
+local function queue(obj)
+	if obj.queue then return end
+	obj.queue = obj.parts[1]:newPart("")
+
+	---@param parent ModelPart
+	local function recurse(parent)
+		local children = parent:getChildren()
+		Task(1, #children, function(i)
+			local child = children[i]
+			if child == obj.queue then return end
+			if not managed[child] then new(child) end
+
+			link(managed[child], managed[parent])
+
+			if child:getType() == "GROUP" then
+				recurse(child)
+			else
+				apply(managed[child])
+			end
+		end)
+	end
+
+	function obj.queue.preRender()
+		recurse(obj.parts[1])
+
+		obj.queue:remove()
+		obj.queue = nil
 	end
 end
 
@@ -189,183 +246,199 @@ end
 
 ---Sets the texture layer of this part.
 ---
----Setting the texture type to `"RESOURCE"` allows selecting any namespaced texture to use as the texture source.
----Setting the texture type to `"CUSTOM"` allows selecting a Figura `Texture` to use as the texture source.
+---Layers can be removed if a texture type isn't provided when calling this method.
 ---
----If `texture` is `nil`, and layer is `1`, it will default to `"PRIMARY"`.
+---A custom texture type requires a Texture in the source field. Similarly, a resource string is required for the resource texture type.
 ---
----If `texture` is `nil`, and layer is `2`, it will default to `"SECONDARY"`.
+---```lua
+---   local jacket = models.model.root.Body.Jacket
+---   local pride_pin = textures["pride_pin"]
 ---
----If `texture` is `nil`, and layer is `3` or above, that layer will be removed.
----@param self ModelPart
----@param layer integer
----@param texture ModelPart.textureType?
----@param source string|Texture?
----@return self
-function ModelPart:setTextureLayer(layer, texture, source)
-	if not layer or layer < 1 then error("Invalid layer index: " .. tostring(layer), 2) end
+---   jacket:setTextureLayer(3, "CUSTOM", pride_pin)
+---```
+---@param layer integer Target layer index
+---@param textureType ModelPart.textureType? Defaults to `"PRIMARY"` or `"SECONDARY"`
+---@param source string|Texture? Required for `"RESOURCE"` and `"CUSTOM"` texture types
+---@overload fun(self: ModelPart, layer: integer, textureType: "RESOURCE", source: string) The `"RESOURCE"` texture type requires a resource string in the source field
+---@overload fun(self: ModelPart, layer: integer, textureType: "CUSTOM", source: Texture) The `"CUSTOM"` texture type requires a Texture in the source field
+---@return self self Returns `self` for chaining
+function ModelPart:setTextureLayer(layer, textureType, source)
+	if not layer or layer ~= math.clamp(layer, 1, 32) then error("Invalid layer index: " .. tostring(layer), 2) end
 	local obj = managed[self] or new(self)
 
-	if texture == "CUSTOM" and not source then error('"CUSTOM" texture type requires argument type: Texture', 2) end
+	if textureType == "CUSTOM" and not source then error('"CUSTOM" texture type requires argument type: Texture', 2) end
 
-	obj.textures[layer] = texture and { texture, source } or layer <= 2 and {} or nil
-	obj.renderTypes[layer] = obj.renderTypes[layer] or layer > 2 and "TRANSLUCENT" or nil
+	-- Update bitmask and depth
+	-- Prevent removing layers 1 and 2
 
-	dirty(obj)
+	if textureType then
+		obj.bitmask = bit32.bor(obj.bitmask, 2 ^ (layer - 1))
+	elseif layer > 2 then
+		obj.bitmask = bit32.band(obj.bitmask, bit32.bnot(2 ^ (layer - 1)))
+	end
+	obj.depth = math.floor(math.log(obj.bitmask, 2)) + 1
+
+	obj.layers.textures[layer] = source
+	obj.layers.textureTypes[layer] = textureType
+
+	queue(obj)
 
 	return self
 end
 
----Gets the texture data of this part at the given layer.
+---Gets the texture layer of this part.
 ---
----If the texture of this layer is `"RESOURCE"` or `"CUSTOM"`, then a second value will be returned.
----@param layer integer
----@return ModelPart.textureType?
----@return string|Texture?
+---```lua
+---   local jacket = models.model.root.Body.Jacket
+---
+---   local textureType, source = jacket:getTextureLayer(3)
+---
+---   print(textureType, source)
+---```
+---@param layer integer Target layer index
+---@return ModelPart.textureType? textureType Returns the texture type stored for this layer if a texture is defined
+---@return string|Texture? source Returns the source stored for this layer if the texture type is either `"RESOURCE"` or `"CUSTOM"`
 ---@nodiscard
 function ModelPart:getTextureLayer(layer)
-	if not layer or layer < 1 then error("Invalid layer index: " .. tostring(layer), 2) end
+	if not layer or layer ~= math.clamp(layer, 1, 32) then error("Invalid layer index: " .. tostring(layer), 2) end
 	local obj = managed[self] or new(self)
 
-	if layer == 1 then
-		return obj.parts[1]:getPrimaryTexture()
-	elseif layer == 2 then
-		return obj.parts[1]:getSecondaryTexture()
-	elseif not obj.textures[layer] then
-		return nil, nil
-	end
-
-	---@diagnostic disable-next-line: redundant-return-value
-	return table.unpack(obj.textures[layer])
+	return rawget(obj.layers.textureTypes, layer), rawget(obj.layers.textures, layer)
 end
 
 ---Gets a list of all textures applied to this ModelPart indexed by its layer.
 ---
 ---Also returns the number of texture layers currently applied.
----@return (string|Texture?)[]
----@return integer
+---
+---```lua
+---   local jacket = models.model.root.Body.Jacket
+---
+---   local textures, depth = jacket:getTextureLayers()
+---
+---   print(textures, depth)
+---```
+---@return (string|Texture?)[] textures Returns the list of textures excluding inherited ones
+---@return integer depth Returns the number of textures currently applied to this part
 ---@nodiscard
 function ModelPart:getTextureLayers()
 	local obj = managed[self] or new(self)
 
-	local depth = 0
-
-	local flat = {}
-	for layer, t in pairs(obj.textures) do
-		flat[layer] = t[2]
-		depth = math.max(depth, layer)
-	end
-
-	return flat, depth
+	return { table.unpack(obj.layers.textures, 1, obj.depth) }, obj.depth
 end
 
 ---Sets the render type of this part at the given layer.
 ---
----This part inherits from its parent if `renderType` is `nil`.
----@param layer integer
----@param renderType ModelPart.renderType?
----@return self
+---```lua
+---   local jacket = models.model.root.Body.Jacket
+---
+---   jacket:setRenderTypeLayer(3, "EYES")
+---```
+---@param layer integer Target layer index
+---@param renderType ModelPart.renderType? Defaults to `"EMISSIVE"` for layer 2, but otherwise `"TRANSLUCENT"`
+---@return self self Returns `self` for chaining
 function ModelPart:setRenderTypeLayer(layer, renderType)
-	if not layer or layer < 1 then error("Invalid layer index: " .. tostring(layer), 2) end
+	if not layer or layer ~= math.clamp(layer, 1, 32) then error("Invalid layer index: " .. tostring(layer), 2) end
 	local obj = managed[self] or new(self)
 
-	obj.renderTypes[layer] = renderType or layer > 2 and "TRANSLUCENT" or nil
+	obj.layers.renderTypes[layer] = renderType or layer > 2 and "TRANSLUCENT" or nil
 
-	dirty(obj)
+	queue(obj)
 
 	return self
 end
 
----Gets the render type of this part's primary layer.
+---Gets the render type of this part at the given layer.
 ---
----Returns `nil` if it is inheriting from its parent.
----@param layer integer
----@return ModelPart.renderType?
+---```lua
+---   local jacket = models.model.root.Body.Jacket
+---
+---   local renderType = jacket:getRenderTypeLayer()
+---
+---   print(renderType)
+---```
+---@param layer integer Target layer index
+---@return ModelPart.renderType? renderType Returns the render type stored for this layer if a render type is defined
 ---@nodiscard
 function ModelPart:getRenderTypeLayer(layer)
-	if not layer or layer < 1 then error("Invalid layer index: " .. tostring(layer), 2) end
+	if not layer or layer ~= math.clamp(layer, 1, 32) then error("Invalid layer index: " .. tostring(layer), 2) end
 	local obj = managed[self] or new(self)
 
-	return obj.renderTypes[layer]
+	return rawget(obj.layers.renderTypes, layer)
 end
 
----Sets the color multiplier of this part.
+---Sets the texture tint color of this part.
 ---
----This is a multiplier, that means that `1, 1, 1` will result in no change and `0, 0, 0` will result in black.
+---The last two parameters are ignored when a vector color is given.
 ---
----If a color channel is nil, it will default to `1`.
----@param r number|Vector3?
----@param g number?
----@param b number?
+---```lua
+---   local jacket = models.model.root.Body.Jacket
+---   local red = vectors.hexToRGB("red")
+---
+---   jacket:setColor(red)
+---```
+---@param r number|Vector3? Defaults to `1`
+---@param g number? Defaults to `1`
+---@param b number? Defaults to `1`
 ---@overload fun(self: ModelPart, layer: integer, r: number?, g: number?, b: number?): ModelPart
 ---@overload fun(self: ModelPart, layer: integer, col: Vector3?): ModelPart
----@return self
+---@return self self Returns `self` for chaining
 function ModelPart:setColor(r, g, b)
 	local obj = managed[self] or new(self)
 
-	obj.color = color_args(r, g, b)
-	obj.colors = {}
+	obj.layers.colors = setmetatable({ [0] = color_args(r, g, b) }, getmetatable(obj.layers.colors))
 
-	dirty(obj)
+	queue(obj)
 
 	return self
 end
 
----Sets the color multiplier of this part at the given layer.
+---Sets the texture tint color of this part at the given layer.
 ---
----This is a multiplier, that means that `1, 1, 1` will result in no change and `0, 0, 0` will result in black.
+---The last two parameters are ignored when a vector color is given.
 ---
----If a color channel is nil, it will default to `1`.
----@param layer integer
----@param r number|Vector3?
----@param g number?
----@param b number?
+---```lua
+---   local jacket = models.model.root.Body.Jacket
+---   local red = vectors.hexToRGB("red")
+---
+---   jacket:setColorLayer(3, red)
+---```
+---@param layer integer Target layer index
+---@param r number|Vector3? Defaults to `1`
+---@param g number? Defaults to `1`
+---@param b number? Defaults to `1`
 ---@overload fun(self: ModelPart, layer: integer, r: number?, g: number?, b: number?): ModelPart
 ---@overload fun(self: ModelPart, layer: integer, col: Vector3?): ModelPart
----@return self
+---@return self self Returns `self` for chaining
 function ModelPart:setColorLayer(layer, r, g, b)
-	if not layer or layer < 1 then error("Invalid layer index: " .. tostring(layer), 2) end
+	if not layer or layer ~= math.clamp(layer, 1, 32) then error("Invalid layer index: " .. tostring(layer), 2) end
 	local obj = managed[self] or new(self)
 
-	obj.colors[layer] = color_args(r, g, b)
+	obj.layers.colors[layer] = color_args(r, g, b)
 
-	dirty(obj)
+	queue(obj)
 
 	return self
 end
 
----Gets the color multiplier of this part.
+---Gets the texture tint color of this part.
 ---
----This is a multiplier, that means that `1, 1, 1` will result in no change and `0, 0, 0` will result in black.
----@param layer integer
----@return Vector3
+---```lua
+---   local jacket = models.model.root.Body.Jacket
+---
+---   local color = jacket:getColorLayer(3)
+---
+---   print(color)
+---```
+---@param layer integer Target layer index
+---@return Vector3 color Returns the color stored for this layer if a color is defined
 ---@nodiscard
 function ModelPart:getColorLayer(layer)
-	if not layer or layer < 1 then error("Invalid layer index: " .. tostring(layer), 2) end
+	if not layer or layer ~= math.clamp(layer, 1, 32) then error("Invalid layer index: " .. tostring(layer), 2) end
 	local obj = managed[self] or new(self)
 
-	return obj.colors[layer]
-end
+	local col = rawget(obj.layers.colors, layer) or rawget(obj.layers.colors, 0)
 
----Gets the ModelPart at the given layer.
----
----May return `nil` if no texture exists for this layer.
----@param layer integer
----@return ModelPart?
----@nodiscard
-function ModelPart:getPartToLayer(layer)
-	if not layer or layer < 1 then error("Invalid layer index: " .. tostring(layer), 2) end
-	local obj = managed[self] or new(self)
-
-	return obj.parts[math.ceil(layer / 2)]
-end
-
----Forces ModelPart layers to update
----@return ModelPart
-function ModelPart:updateLayers()
-	local obj = managed[self] or new(self)
-	dirty(obj)
-	return self
+	return col:copy()
 end
 
 --#ENDREGION -----------------------------------------------------------------------------------
@@ -392,6 +465,20 @@ ModelPart.setSecondaryRenderType = function(self, renderType) return self:setRen
 ModelPart.secondaryRenderType = function(self, renderType) return self:setRenderTypeLayer(2, renderType) end
 ModelPart.setSecondaryColor = function(self, ...) return self:setColorLayer(2, ...) end
 ModelPart.secondaryColor = function(self, ...) return self:setColorLayer(2, ...) end
+
+---**This function is deprecated due to ModelPart handling changes.**
+---
+---~~Gets the ModelPart at the given layer.~~
+---
+---~~May return `nil` if no texture exists for this layer.~~
+---@deprecated
+ModelPart.getPartToLayer = nil
+
+---**This function is deprecated as it no longer serves its intended purpose.**
+---
+---~~Forces ModelPart layers to update~~
+---@deprecated
+ModelPart.updateLayers = nil
 
 --#ENDREGION
 
