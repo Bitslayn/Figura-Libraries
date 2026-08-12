@@ -205,20 +205,20 @@ local function queue(obj)
 
 	---@param parent ModelPart
 	local function recurse(parent)
-		local children = parent:getChildren()
-		Task(1, #children, function(i)
-			local child = children[i]
-			if child == obj.queue then return end
-			if not managed[child] then new(child) end
+		if parent:getType() == "GROUP" then
+			local children = parent:getChildren()
+			Task(1, #children, function(i)
+				local child = children[i]
+				assert(child ~= obj.queue, "Create a bug report if you are seeing this error")
+				if not managed[child] then new(child) end
 
-			link(managed[child], managed[parent])
+				link(managed[child], managed[parent])
 
-			if child:getType() == "GROUP" then
 				recurse(child)
-			else
-				apply(managed[child])
-			end
-		end)
+			end)
+		else
+			apply(managed[parent])
+		end
 	end
 
 	function obj.queue.preRender()
