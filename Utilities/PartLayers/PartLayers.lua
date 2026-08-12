@@ -169,15 +169,16 @@ local function apply(obj)
 end
 
 ---Links parts so they can inherit layers
----@param chld FOXPartLayers.Part
----@param parn FOXPartLayers.Part
-local function link(chld, parn)
-	chld.bitmask = bit32.bor(parn.bitmask, chld.bitmask)
-	chld.depth = math.floor(math.log(chld.bitmask, 2)) + 1
+---@param child FOXPartLayers.Part
+---@param parent FOXPartLayers.Part
+local function link(child, parent)
+	child.bitmask = bit32.bor(parent.bitmask, child.bitmask)
+	child.depth = math.floor(math.log(child.bitmask, 2)) + 1
 
-	for key in pairs(chld.layers) do
-		setmetatable(chld.layers[key], { __index = parn.layers[key] })
-	end
+	setmetatable(child.layers.textures, { __index = parent.layers.textures })
+	setmetatable(child.layers.textureTypes, { __index = parent.layers.textureTypes })
+	setmetatable(child.layers.renderTypes, { __index = parent.layers.renderTypes })
+	setmetatable(child.layers.colors, { __index = parent.layers.colors })
 end
 
 ---Queues layer application and applies layer inheritance
@@ -186,22 +187,24 @@ local function queue(obj)
 	if obj.queue then return end
 	obj.queue = obj.parts[1]:newPart("")
 
-	function obj.queue.preRender()
-		---@param parn ModelPart
-		local function recurse(parn)
-			for _, chld in ipairs(parn:getChildren()) do
-				if not managed[chld] then new(chld) end
+	---@param parent ModelPart
+	local function recurse(parent)
+		local children = parent:getChildren()
+		for i = 1, #children do
+			local child = children[i]
+			if not managed[child] then new(child) end
 
-				link(managed[chld], managed[parn])
+			link(managed[child], managed[parent])
 
-				if chld:getType() == "GROUP" then
-					recurse(chld)
-				else
-					apply(managed[chld])
-				end
+			if child:getType() == "GROUP" then
+				recurse(child)
+			else
+				apply(managed[child])
 			end
 		end
+	end
 
+	function obj.queue.postRender()
 		recurse(obj.parts[1])
 
 		obj.queue:remove()
