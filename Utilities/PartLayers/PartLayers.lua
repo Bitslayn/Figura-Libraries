@@ -3,7 +3,7 @@ ____  ___ __   __
 | __|/ _ \\ \ / /
 | _|| (_) |> w <
 |_|  \___//_/ \_\
-FOX's Part Layers v1.0-final-rc5
+FOX's Part Layers v1.0
 
 Adds the ability to set unlimited Texture, RenderType, and Color layers to a ModelPart
 Injects into Figura's ModelPartAPI, adding layer methods, and replaces primary and secondary setters to use layers 1 and 2
@@ -209,7 +209,7 @@ local function queue(obj)
 			local children = parent:getChildren()
 			Task(1, #children, function(i)
 				local child = children[i]
-				assert(child ~= obj.queue, "Create a bug report if you are seeing this error")
+				if child == obj.queue then return end
 				if not managed[child] then new(child) end
 
 				link(managed[child], managed[parent])
