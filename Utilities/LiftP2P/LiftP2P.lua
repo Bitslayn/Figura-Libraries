@@ -36,6 +36,10 @@ local cfg = {
 --#REGION ˚♡ Movement functions ♡˚
 --==============================================================================================================================
 
+-- Send ping to host to lift player
+-- Host pings back saying they're being lifted
+-- Everyone sees the lifter and liftee call their events
+
 ---@type table<string, function>
 ---@diagnostic disable-next-line: undefined-global
 local api = silly or goofy or host
@@ -66,14 +70,14 @@ end
 -- TODO event for when you are lifted for the fun stuff
 
 ---@alias FOXLiftP2P.Position
----| fun(uuid: string, x: number?, y: number?, z: number?, ctx: string?): boolean, ...
----| fun(uuid: string, pos: Vector3, ctx: string?): boolean, ...
+---| fun(uuid: string, x: number?, y: number?, z: number?, ctx: string?): boolean, any
+---| fun(uuid: string, pos: Vector3, ctx: string?): boolean, any
 ---@alias FOXLiftP2P.Rotation
----| fun(uuid: string, x: number?, y: number?, ctx: string?): boolean, ...
----| fun(uuid: string, rot: Vector2, ctx: string?): boolean, ...
+---| fun(uuid: string, x: number?, y: number?, ctx: string?): boolean, any
+---| fun(uuid: string, rot: Vector2, ctx: string?): boolean, any
 ---@alias FOXLiftP2P.Velocity
----| fun(uuid: string, x: number?, y: number?, z: number?, ctx: string?): boolean, ...
----| fun(uuid: string, vel: Vector3, ctx: string?): boolean, ...
+---| fun(uuid: string, x: number?, y: number?, z: number?, ctx: string?): boolean, any
+---| fun(uuid: string, vel: Vector3, ctx: string?): boolean, any
 ---@class FOXLiftP2P.MovementFunctions
 ---@field setPos FOXLiftP2P.Position
 ---@field setRot FOXLiftP2P.Rotation
@@ -93,6 +97,7 @@ return setmetatable(lift, {
 		---@param y number
 		---@param z number|string?
 		---@param ctx string?
+		---@return boolean, any
 		return function(uuid, x, y, z, ctx)
 			local args
 
@@ -114,7 +119,7 @@ return setmetatable(lift, {
 				end
 			end
 
-			return p2p.send(uuid, { protocol = "Lift", action = key, args = args, reason = ctx or "Grab" })
+			return pcall(p2p.send, uuid, { protocol = "Lift", action = key, args = args, reason = ctx or "Grab" })
 		end
 	end,
 })

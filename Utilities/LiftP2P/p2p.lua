@@ -48,14 +48,6 @@ local function get_type(v)
 	return pcall(rawget, v, "") and "table" or type(v)
 end
 
----Packs the given value if it's not already a string
----@param v any
----@return string
-local function pack_json(v)
-	if get_type(v) == "string" then return v end
-	return toJson(v)
-end
-
 -- https://discord.com/channels/1129805506354085959/1234218592187453452/1432167163250217003
 
 ---Raises an error if the value of its argument v is false (i.e., `nil` or `false`); otherwise, returns all its arguments. In case of error, `message` is the error object; when absent, it defaults to `"assertion failed!"`
@@ -115,6 +107,8 @@ local pipes = {}
 local store = { version = "1.0", session = session }
 avatar:store("FOXP2P", store)
 
+local avatar_uuid = avatar:getUUID()
+
 ---Create new pipe for uuid
 ---@param uuid string
 function store.prompter(uuid)
@@ -123,7 +117,7 @@ function store.prompter(uuid)
 	if not (vars and vars.FOXP2P) then return end
 
 	store.pipe = new_pipe(uuid)
-	strict_pcall(vars.FOXP2P.acceptor, avatar:getUUID())
+	strict_pcall(vars.FOXP2P.acceptor, avatar_uuid)
 	store.pipe = nil
 end
 
@@ -164,17 +158,26 @@ local p2p = {
 ---@return boolean success
 ---@return any response
 function p2p.send(uuid, payload)
+	---@type FOXP2P.Vars?
+	local vars = world.avatarVars()[uuid]
+	if not (vars and vars.FOXP2P) then return false, "Avatar doesn't have FOXP2P" end
+
 	-- Open pipe
 
-	store.prompter(uuid)
+	local ok1 = strict_pcall(vars.FOXP2P.prompter, avatar_uuid)
+	assert(ok1, "Failed opening pipe", 2)
 
 	local pipe = pipes[uuid]
-	assert(pipe, "Failed opening pipe", 2)
 
 	-- Package payload
 
-	local ok1, json = strict_pcall(pack_json, payload)
-	assert(ok1, "Failed packaging payload", 2)
+	local function pack_json(v)
+		if get_type(v) == "string" then return v end
+		return toJson(v)
+	end
+
+	local ok2, json = strict_pcall(pack_json, payload)
+	assert(ok2, "Failed packaging payload", 2)
 
 	-- Send payload
 
