@@ -63,13 +63,13 @@ end
 --==============================================================================================================================
 
 ---@class FOXLiftP2P.MovementFunctions
----@field setPos fun(uuid: string, x: number, y: number, z: number, ctx: string?)
+---@field setPos fun(uuid: string, x: number?, y: number?, z: number?, ctx: string?)
 ---@field setPos fun(uuid: string, pos: Vector3, ctx: string?)
----@field setRot fun(uuid: string, x: number, y: number, ctx: string?)
+---@field setRot fun(uuid: string, x: number?, y: number?, ctx: string?)
 ---@field setRot fun(uuid: string, rot: Vector2, ctx: string?)
----@field setVel fun(uuid: string, x: number, y: number, z: number, ctx: string?)
+---@field setVel fun(uuid: string, x: number?, y: number?, z: number?, ctx: string?)
 ---@field setVel fun(uuid: string, vel: Vector3, ctx: string?)
----@field setVelocity fun(uuid: string, x: number, y: number, z: number, ctx: string?)
+---@field setVelocity fun(uuid: string, x: number?, y: number?, z: number?, ctx: string?)
 ---@field setVelocity fun(uuid: string, vel: Vector3, ctx: string?)
 
 ---@class FOXLiftP2P: FOXLiftP2P.MovementFunctions
