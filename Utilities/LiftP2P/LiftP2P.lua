@@ -43,23 +43,67 @@ local cfg = {
 ---@type table<string, function>
 ---@diagnostic disable-next-line: undefined-global
 local api = silly or goofy or host
+
+---@alias FOXLiftP2P.Actions
+---| "setPos"
+---| "setRot"
+---| "setVel"
+---| "setVelocity"
 local allowed = { setPos = true, setRot = true, setVel = true, setVelocity = true }
 
 ---@class FOXLiftP2P.Payload
----@field protocol "Lift"
----@field action string The name of the function being called
----@field args number[] The vector as an array of numbers
----@field reason string The reason for lifting this person
+---@field protocol "Lift"?
+---@field action string? The name of the function being called
+---@field args number[]? The vector as an array of numbers
+---@field ctx string? The reason for lifting this person
+
+---@alias FOXLiftP2P.Events.Generic fun(uuid: string, action: FOXLiftP2P.Actions, ctx: string)
+---@alias FOXLiftP2P.Events.Expire fun(uuid: string)
+---@class FOXLiftP2P.Events
+---@field on_lift FOXLiftP2P.Events.Generic Event called when you start being lifted by someone. Gives you their UUID, the function key, and a custom context
+---@field each_lift FOXLiftP2P.Events.Generic Event called each call to lift you by someone. Gives you their UUID, the function key, and a custom context
+---@field on_unlift FOXLiftP2P.Events.Expire Event called after you stop being lifted by someone. Gives you their UUID
+
+local event = {
+	---@type FOXLiftP2P.Events.Generic[]
+	on_lift = {},
+	---@type FOXLiftP2P.Events.Generic[]
+	each_lift = {},
+	---@type FOXLiftP2P.Events.Expire[]
+	on_unlift = {},
+}
+
+---@type table<string, integer>
+local lifters = {}
+
+function events.tick()
+	for uuid, t in pairs(lifters) do
+		if t > 1 then
+			lifters[uuid] = t - 1
+		else
+			for i = 1, #event.on_unlift do event.on_unlift[i](uuid) end
+			lifters[uuid] = nil
+		end
+	end
+end
 
 ---@param uuid string
 ---@param payload FOXLiftP2P.Payload
 function p2p.events.on_receive(uuid, payload)
 	if payload.protocol ~= "Lift" then return end
-	local whitelist = cfg.blacklist ~= (cfg.whitelist[uuid] or cfg.whitelist[world.getEntity(uuid):getName()])
-	if not whitelist then return end
-	if not allowed[payload.action] then return end
 
-	api[payload.action](api, payload.args[1], payload.args[2], payload.args[3])
+	local whitelist = not cfg.blacklist ~= not (cfg.whitelist[uuid] or cfg.whitelist[world.getEntity(uuid) and world.getEntity(uuid):getName()])
+	if not (whitelist and allowed[payload.action]) then return end
+
+	if not payload.args then return end
+	pcall(api[payload.action], api, payload.args[1], payload.args[2], payload.args[3])
+
+	if not lifters[uuid] then
+		for i = 1, #event.on_lift do event.on_lift[i](uuid, payload.action, payload.ctx) end
+	end
+	lifters[uuid] = 5
+
+	for i = 1, #event.each_lift do event.each_lift[i](uuid, payload.action, payload.ctx) end
 end
 
 --#ENDREGION --=================================================================================================================
@@ -67,7 +111,6 @@ end
 --==============================================================================================================================
 
 -- TODO "add" and "sendPacket" overload or something
--- TODO event for when you are lifted for the fun stuff
 
 ---@alias FOXLiftP2P.Position
 ---| fun(uuid: string, x: number?, y: number?, z: number?, ctx: string?): boolean, any
@@ -85,7 +128,24 @@ end
 ---@field setVelocity FOXLiftP2P.Velocity
 
 ---@class FOXLiftP2P: FOXLiftP2P.MovementFunctions
-local lift = {}
+local lift = {
+	---@type FOXLiftP2P.Events
+	events = setmetatable({}, {
+		__newindex = function(_, k, v)
+			assert(type(v) == "function", "Cannot assign value to event", 2)
+			event[k][#event[k] + 1] = v
+		end,
+	}),
+}
+
+---Checks if you can lift this avatar
+---
+---You cannot lift someone who doesn't have you on their whitelist, or doesn't have lift enabled
+---@param uuid string
+---@return boolean
+function lift.can_lift(uuid)
+	return p2p.send(uuid, { protocol = "Lift", check = true }).can_lift or false
+end
 
 return setmetatable(lift, {
 	---Allow indexing `lift` and calling viewer functions
@@ -119,7 +179,7 @@ return setmetatable(lift, {
 				end
 			end
 
-			return pcall(p2p.send, uuid, { protocol = "Lift", action = key, args = args, reason = ctx or "Grab" })
+			return pcall(p2p.send, uuid, { protocol = "Lift", action = key, args = args, ctx = ctx or "DEFAULT" })
 		end
 	end,
 })

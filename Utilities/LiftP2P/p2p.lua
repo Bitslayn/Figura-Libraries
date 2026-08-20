@@ -39,15 +39,6 @@ local function strict_pcall(f, ...)
 	end
 end
 
--- https://discord.com/channels/1129805506354085959/1234218592187453452/1357793315302670398
-
----Returns the type of an argument, bypassing any `__type` or `__metatable` shenanigans.
----@param v any
----@return string type
-local function get_type(v)
-	return pcall(rawget, v, "") and "table" or type(v)
-end
-
 -- https://discord.com/channels/1129805506354085959/1234218592187453452/1432167163250217003
 
 ---Raises an error if the value of its argument v is false (i.e., `nil` or `false`); otherwise, returns all its arguments. In case of error, `message` is the error object; when absent, it defaults to `"assertion failed!"`
@@ -80,13 +71,16 @@ local event = {
 local function new_pipe(uuid)
 	---@param payload string
 	local pipe = function(payload)
-		assert(world.avatarVars()[avatar:getUUID()].FOXP2P.session == session, "Avatar session expired")
+		local vars = world.avatarVars()[avatar:getUUID()]
+		assert(vars.FOXP2P and vars.FOXP2P.session == session, "Avatar session expired", 2)
 
 		payload = parseJson(payload)
 
 		for i = 1, #event.on_receive do
 			event.on_receive[i](uuid, payload)
 		end
+
+		return {} -- Returning a table here can lead to exploits, find another approach to sending callbacks
 	end
 
 	return pipe
@@ -142,7 +136,7 @@ local p2p = {
 	---@type FOXP2P.Events
 	events = setmetatable({}, {
 		__newindex = function(_, k, v)
-			assert(get_type(v) == "function", "Cannot assign value to event", 2)
+			assert(type(v) == "function", "Cannot assign value to event", 2)
 			event[k][#event[k] + 1] = v
 		end,
 	}),
@@ -172,7 +166,7 @@ function p2p.send(uuid, payload)
 	-- Package payload
 
 	local function pack_json(v)
-		if get_type(v) == "string" then return v end
+		if type(v) == "string" then return v end
 		return toJson(v)
 	end
 
