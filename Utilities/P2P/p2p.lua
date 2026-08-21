@@ -56,10 +56,13 @@ local function new_pipe(uuid)
 		local cb = {}
 
 		for i = 1, #event.on_receive do
-			event.on_receive[i](uuid, pl)
+			local t = event.on_receive[i](uuid, pl)
+			if t then
+				for k, v in next, t do cb[k] = v end
+			end
 		end
 
-		return cb -- Todo, cries in recursion
+		return cb
 	end
 
 	return pipe
