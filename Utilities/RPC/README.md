@@ -1,25 +1,21 @@
 <details>
 
-<summary><code>FOXP2P.send()</code></summary>
+<summary><code>FOXRPC.send()</code></summary>
 
-Sends the given payload to the user
+Send an RPC request to an avatar, then immediately returns the avatar's response.
 
-Throws if this user doesn't have FOX Peer-to-peer or the payload is invalid
-
-Returns if the payload was sent successfully, and a response
+Throws if any issues occur during transit.
 #### Parameters:
 ```lua
-function FOXP2P.send(uuid: string, payload: string|table)
-  -> success: boolean
-  2. response: any
+function FOXRPC.send(uuid: string, request: table)
+  -> response: table
 ```
 |Name|Type(s)|Description|
 |-|-|-|
 |uuid|string|-|
-|payload|string or table|-|
+|request|table|-|
 #### Returns:
 |Name|Type(s)|Description|
 |-|-|-|
-|success|boolean|-|
-|response|any|-|
+|response|table|-|
 </details>
