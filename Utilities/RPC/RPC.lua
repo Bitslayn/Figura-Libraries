@@ -90,6 +90,9 @@ function store.prompter(uuid)
 	local vars = world.avatarVars()[uuid]
 	if not (vars and vars.FOXRPC) then return end
 
+	-- Refuse connection if this script is outdated
+	if client.compareVersions(store.version, vars.FOXRPC.version) == -1 then return end
+
 	store.endpoint = new_pipe(uuid)
 	pcall(branch_stack, vars.FOXRPC.acceptor, avatar_uuid)
 	store.endpoint = nil
