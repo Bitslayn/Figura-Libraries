@@ -5,7 +5,7 @@ ____  ___ __   __
 |_|  \___//_/ \_\
 FOX's RPC Protocol v1.0
 
-Allows for securly sending and receiving messages between avatars
+Allows for securely sending and receiving messages between avatars
 
 Github: https://github.com/Bitslayn/Figura-Libraries/tree/main/Utilities/RPC
 ]]
