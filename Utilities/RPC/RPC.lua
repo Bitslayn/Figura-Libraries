@@ -3,11 +3,11 @@ ____  ___ __   __
 | __|/ _ \\ \ / /
 | _|| (_) |> w <
 |_|  \___//_/ \_\
-FOX's P2P Protocol v1.0
+FOX's RPC Protocol v1.0
 
-Allows for securily sending JSON payloads to other avatars
+Allows for securly sending and receiving messages between avatars
 
-Github: TODO
+Github: https://github.com/Bitslayn/Figura-Libraries/tree/main/Utilities/RPC
 ]]
 
 --==============================================================================================================================
@@ -34,78 +34,76 @@ end
 
 local session = client.intUUIDToString(client.generateUUID())
 
----@alias FOXP2P.Events.OnReceive fun(uuid: string, pl: table): cb: table
----@class FOXP2P.Events
----@field on_receive FOXP2P.Events.OnReceive Executed when someone sends over a payload. Return a table to use as the callback
+---This event runs whenever an avatar sends a request. Returning a table from this event will send a response.
+---
+---If multiple `on_receive` events return a response, the responses get merged together into a single table.
+---@alias FOXRPC.Events.OnReceive fun(uuid: string, request: table): response: table?
+---@class FOXRPC.Events
+---@field on_receive FOXRPC.Events.OnReceive
 
 local event = {
-	---@type FOXP2P.Events.OnReceive[]
+	---@type FOXRPC.Events.OnReceive[]
 	on_receive = {},
 }
 
----Creates a new pipe with the uuid being that of the intended sender
+---Creates a new endpoint with the uuid being that of the intended sender
 ---@param uuid string
+---@return FOXRPC.Endpoint
 local function new_pipe(uuid)
-	---@param pl table
-	---@return table cb
-	local pipe = function(pl)
+	return function(request)
 		local vars = world.avatarVars()[avatar:getUUID()]
-		assert(vars and vars.FOXP2P and vars.FOXP2P.session == session, "Avatar session expired")
+		assert(vars and vars.FOXRPC and vars.FOXRPC.session == session, "Avatar session expired")
 
-		pl = parseJson(branch_stack(toJson, pl))
-		local cb = {}
+		request = parseJson(branch_stack(toJson, request))
+		local response = {}
 
 		for i = 1, #event.on_receive do
-			local t = event.on_receive[i](uuid, pl)
+			local t = event.on_receive[i](uuid, request)
 			if t then
-				for k, v in next, t do cb[k] = v end
+				for k, v in next, t do response[k] = v end
 			end
 		end
 
-		return cb
+		return response
 	end
-
-	return pipe
 end
 
 --#ENDREGION --=================================================================================================================
 --#REGION ˚♡ Prompter/Acceptor ♡˚
 --==============================================================================================================================
 
----@alias FOXP2P.Pipe fun(pl: string)
-
----@type FOXP2P.Pipe
-local pipe
-
+---@alias FOXRPC.Vars {FOXRPC: FOXRPC.Store?}
+---@class FOXRPC.Store
+---@field endpoint FOXRPC.Endpoint?
+local store = { version = "1.0", session = session }
+avatar:store("FOXRPC", store)
 local avatar_uuid = avatar:getUUID()
 
----@alias FOXP2P.Vars {FOXP2P: FOXP2P.Store?}
----@class FOXP2P.Store
----@field pipe FOXP2P.Pipe?
-local store = { version = "1.0", session = session }
-avatar:store("FOXP2P", store)
+---@alias FOXRPC.Endpoint fun(pl: table): table
+---@type FOXRPC.Endpoint
+local endpoint
 
----Create new pipe for uuid
+---Create new endpoint for uuid
 ---@param uuid string
 function store.prompter(uuid)
-	---@type FOXP2P.Vars?
+	---@type FOXRPC.Vars?
 	local vars = world.avatarVars()[uuid]
-	if not (vars and vars.FOXP2P) then return end
+	if not (vars and vars.FOXRPC) then return end
 
-	store.pipe = new_pipe(uuid)
-	pcall(branch_stack, vars.FOXP2P.acceptor, avatar_uuid)
-	store.pipe = nil
+	store.endpoint = new_pipe(uuid)
+	pcall(branch_stack, vars.FOXRPC.acceptor, avatar_uuid)
+	store.endpoint = nil
 end
 
----Fetch created pipe from uuid
+---Fetch created endpoint from uuid
 ---@param uuid string
 function store.acceptor(uuid)
-	---@type FOXP2P.Vars?
+	---@type FOXRPC.Vars?
 	local vars = world.avatarVars()[uuid]
-	if not (vars and vars.FOXP2P) then return end
+	if not (vars and vars.FOXRPC) then return end
 
-	if vars.FOXP2P.pipe then
-		pipe = vars.FOXP2P.pipe
+	if vars.FOXRPC.endpoint then
+		endpoint = vars.FOXRPC.endpoint
 	end
 end
 
@@ -113,31 +111,29 @@ end
 --#REGION ˚♡ API ♡˚
 --==============================================================================================================================
 
----@class FOXP2P
-local p2p = {
-	---@type FOXP2P.Events
+---@class FOXRPC
+local FOXRPC = {
+	---@type FOXRPC.Events
 	events = setmetatable({}, { __newindex = function(_, k, v) event[k][#event[k] + 1] = v end }),
 }
 
----Sends the given payload to the user
+---Send an RPC request to an avatar, then immediately returns the avatar's response.
 ---
----Returns a callback
----
----Errorable
+---Throws if any issues occur during transit.
 ---@param uuid string
----@param pl table
----@return table cb
-function p2p.send(uuid, pl)
-	---@type FOXP2P.Vars?
+---@param request table
+---@return table response
+function FOXRPC.send(uuid, request)
+	---@type FOXRPC.Vars?
 	local vars = world.avatarVars()[uuid]
-	assert(vars and vars.FOXP2P, "Avatar doesn't have FOXP2P")
+	assert(vars and vars.FOXRPC, "Avatar doesn't have FOXRPC")
 
-	branch_stack(vars.FOXP2P.prompter, avatar_uuid)
-	local cb = branch_stack(pipe, pl)
+	branch_stack(vars.FOXRPC.prompter, avatar_uuid)
+	local response = branch_stack(endpoint, request)
 
-	return parseJson(branch_stack(toJson, cb))
+	return parseJson(branch_stack(toJson, response))
 end
 
-return p2p
+return FOXRPC
 
 --#ENDREGION
