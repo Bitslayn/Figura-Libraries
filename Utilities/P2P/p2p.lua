@@ -14,41 +14,18 @@ Github: TODO
 --#REGION ˚♡ Shared ♡˚
 --==============================================================================================================================
 
--- https://discord.com/channels/1129805506354085959/1234218592187453452/1539761721403768893
-
----Calls a scrict [pcall](command:extension.lua.doc?["en-us/52/manual.html/pdf-pcall"]) on the function. Protects against stack overflow errors.
 ---@param f function
 ---@param ... any
----@return boolean success
----@return any result
 ---@return any ...
-local function strict_pcall(f, ...)
-	local var = { ... }
-	local out
+local function branch_stack(f, ...)
+	local var, out = { ... }, {}
 
-	local vec = vectors.vec2()
-	local ok, res = pcall(vec.applyFunc, vec, function(_, i)
+	vectors.vec2():applyFunc(function(_, i)
 		---@diagnostic disable-next-line: missing-return-value, missing-return
 		if i > 1 then return end; out = { f(table.unpack(var)) }
 	end)
 
-	if ok then
-		return ok, table.unpack(out)
-	else
-		return ok, res
-	end
-end
-
--- https://discord.com/channels/1129805506354085959/1234218592187453452/1432167163250217003
-
----Raises an error if the value of its argument v is false (i.e., `nil` or `false`); otherwise, returns all its arguments. In case of error, `message` is the error object; when absent, it defaults to `"assertion failed!"`
----@generic T
----@param v? T
----@param message? any
----@param level? integer
----@return T v
-function assert(v, message, level)
-	return v or error(message or "Assertion failed!", (level or 1) + 1)
+	return table.unpack(out)
 end
 
 --#ENDREGION --=================================================================================================================
@@ -57,9 +34,9 @@ end
 
 local session = client.intUUIDToString(client.generateUUID())
 
----@alias FOXP2P.Events.OnReceive fun(uuid: string, payload: table)
+---@alias FOXP2P.Events.OnReceive fun(uuid: string, pl: table): cb: table
 ---@class FOXP2P.Events
----@field on_receive FOXP2P.Events.OnReceive
+---@field on_receive FOXP2P.Events.OnReceive Executed when someone sends over a payload. Return a table to use as the callback
 
 local event = {
 	---@type FOXP2P.Events.OnReceive[]
@@ -69,18 +46,20 @@ local event = {
 ---Creates a new pipe with the uuid being that of the intended sender
 ---@param uuid string
 local function new_pipe(uuid)
-	---@param payload string
-	local pipe = function(payload)
+	---@param pl table
+	---@return table cb
+	local pipe = function(pl)
 		local vars = world.avatarVars()[avatar:getUUID()]
-		assert(vars.FOXP2P and vars.FOXP2P.session == session, "Avatar session expired", 2)
+		assert(vars and vars.FOXP2P and vars.FOXP2P.session == session, "Avatar session expired")
 
-		payload = parseJson(payload)
+		pl = parseJson(branch_stack(toJson, pl))
+		local cb = {}
 
 		for i = 1, #event.on_receive do
-			event.on_receive[i](uuid, payload)
+			event.on_receive[i](uuid, pl)
 		end
 
-		return {} -- Returning a table here can lead to exploits, find another approach to sending callbacks
+		return cb -- Todo, cries in recursion
 	end
 
 	return pipe
@@ -90,18 +69,18 @@ end
 --#REGION ˚♡ Prompter/Acceptor ♡˚
 --==============================================================================================================================
 
----@alias FOXP2P.Pipe fun(payload: string)
+---@alias FOXP2P.Pipe fun(pl: string)
 
----@type table<string, FOXP2P.Pipe>
-local pipes = {}
+---@type FOXP2P.Pipe
+local pipe
+
+local avatar_uuid = avatar:getUUID()
 
 ---@alias FOXP2P.Vars {FOXP2P: FOXP2P.Store?}
 ---@class FOXP2P.Store
 ---@field pipe FOXP2P.Pipe?
 local store = { version = "1.0", session = session }
 avatar:store("FOXP2P", store)
-
-local avatar_uuid = avatar:getUUID()
 
 ---Create new pipe for uuid
 ---@param uuid string
@@ -111,7 +90,7 @@ function store.prompter(uuid)
 	if not (vars and vars.FOXP2P) then return end
 
 	store.pipe = new_pipe(uuid)
-	strict_pcall(vars.FOXP2P.acceptor, avatar_uuid)
+	pcall(branch_stack, vars.FOXP2P.acceptor, avatar_uuid)
 	store.pipe = nil
 end
 
@@ -123,7 +102,7 @@ function store.acceptor(uuid)
 	if not (vars and vars.FOXP2P) then return end
 
 	if vars.FOXP2P.pipe then
-		pipes[uuid] = vars.FOXP2P.pipe
+		pipe = vars.FOXP2P.pipe
 	end
 end
 
@@ -134,48 +113,26 @@ end
 ---@class FOXP2P
 local p2p = {
 	---@type FOXP2P.Events
-	events = setmetatable({}, {
-		__newindex = function(_, k, v)
-			assert(type(v) == "function", "Cannot assign value to event", 2)
-			event[k][#event[k] + 1] = v
-		end,
-	}),
+	events = setmetatable({}, { __newindex = function(_, k, v) event[k][#event[k] + 1] = v end }),
 }
 
 ---Sends the given payload to the user
 ---
----Throws if this user doesn't have FOX Peer-to-peer or the payload is invalid
+---Returns a callback
 ---
----Returns if the payload was sent successfully, and a response
+---Errorable
 ---@param uuid string
----@param payload string|table
----@return boolean success
----@return any response
-function p2p.send(uuid, payload)
+---@param pl table
+---@return table cb
+function p2p.send(uuid, pl)
 	---@type FOXP2P.Vars?
 	local vars = world.avatarVars()[uuid]
-	if not (vars and vars.FOXP2P) then return false, "Avatar doesn't have FOXP2P" end
+	assert(vars and vars.FOXP2P, "Avatar doesn't have FOXP2P")
 
-	-- Open pipe
+	branch_stack(vars.FOXP2P.prompter, avatar_uuid)
+	local cb = branch_stack(pipe, pl)
 
-	local ok1 = strict_pcall(vars.FOXP2P.prompter, avatar_uuid)
-	assert(ok1, "Failed opening pipe", 2)
-
-	local pipe = pipes[uuid]
-
-	-- Package payload
-
-	local function pack_json(v)
-		if type(v) == "string" then return v end
-		return toJson(v)
-	end
-
-	local ok2, json = strict_pcall(pack_json, payload)
-	assert(ok2, "Failed packaging payload", 2)
-
-	-- Send payload
-
-	return strict_pcall(pipe, json)
+	return parseJson(branch_stack(toJson, cb))
 end
 
 return p2p
