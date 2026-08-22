@@ -3,7 +3,7 @@ ____  ___ __   __
 | __|/ _ \\ \ / /
 | _|| (_) |> w <
 |_|  \___//_/ \_\
-FOX's RPC Protocol v1.0
+FOX's RPC Protocol v1.1
 
 Allows for securely sending and receiving messages between avatars
 
@@ -14,6 +14,9 @@ Github: https://github.com/Bitslayn/Figura-Libraries/tree/main/Utilities/RPC
 --#REGION ˚♡ Shared ♡˚
 --==============================================================================================================================
 
+---Calls the function off-stack
+---
+---Makes stack overflow errors pcallable
 ---@param f function
 ---@param ... any
 ---@return any ...
@@ -28,8 +31,17 @@ local function branch_stack(f, ...)
 	return table.unpack(out)
 end
 
+---Runs the table through the json serializer
+---
+---Functionally copies the table while removing Userdata, functions, and other non-serializable types
+---@param t table
+---@return table t
+local function sanitize(t)
+	return parseJson(branch_stack(toJson, t))
+end
+
 --#ENDREGION --=================================================================================================================
---#REGION ˚♡ Pipes ♡˚
+--#REGION ˚♡ Endpoints ♡˚
 --==============================================================================================================================
 
 local session = client.intUUIDToString(client.generateUUID())
@@ -49,14 +61,14 @@ local event = {
 ---Creates a new endpoint with the uuid being that of the intended sender
 ---@param uuid string
 ---@return FOXRPC.Endpoint
-local function new_pipe(uuid)
+local function new_endpoint(uuid)
 	return function(request)
 		local vars = world.avatarVars()[avatar:getUUID()]
 		assert(vars and vars.FOXRPC and vars.FOXRPC.session == session, "Avatar session expired")
 
-		request = parseJson(branch_stack(toJson, request))
-		local response = {}
+		request = sanitize(request)
 
+		local response = {}
 		for i = 1, #event.on_receive do
 			local t = event.on_receive[i](uuid, request)
 			if t then
@@ -64,7 +76,7 @@ local function new_pipe(uuid)
 			end
 		end
 
-		return response
+		return sanitize(response)
 	end
 end
 
@@ -75,7 +87,7 @@ end
 ---@alias FOXRPC.Vars {FOXRPC: FOXRPC.Store?}
 ---@class FOXRPC.Store
 ---@field endpoint FOXRPC.Endpoint?
-local store = { version = "1.0", session = session }
+local store = { version = "1.1", session = session }
 avatar:store("FOXRPC", store)
 local avatar_uuid = avatar:getUUID()
 
@@ -93,7 +105,7 @@ function store.prompter(uuid)
 	-- Refuse connection if this script is outdated
 	if client.compareVersions(store.version, vars.FOXRPC.version) == -1 then return end
 
-	store.endpoint = new_pipe(uuid)
+	store.endpoint = new_endpoint(uuid)
 	pcall(branch_stack, vars.FOXRPC.acceptor, avatar_uuid)
 	store.endpoint = nil
 end
@@ -132,9 +144,9 @@ function FOXRPC.send(uuid, request)
 	assert(vars and vars.FOXRPC, "Avatar doesn't have FOXRPC")
 
 	branch_stack(vars.FOXRPC.prompter, avatar_uuid)
-	local response = branch_stack(endpoint, request)
+	local response = branch_stack(endpoint, sanitize(request))
 
-	return parseJson(branch_stack(toJson, response))
+	return sanitize(response)
 end
 
 return FOXRPC
