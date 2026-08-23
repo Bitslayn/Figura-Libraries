@@ -45,6 +45,7 @@ end
 --==============================================================================================================================
 
 local session = client.intUUIDToString(client.generateUUID())
+local avatar_uuid = avatar:getUUID()
 
 ---This event runs whenever an avatar sends a request. Returning a table from this event will send a response.
 ---
@@ -63,7 +64,7 @@ local event = {
 ---@return FOXRPC.Endpoint
 local function new_endpoint(uuid)
 	return function(request)
-		local vars = world.avatarVars()[avatar:getUUID()]
+		local vars = world.avatarVars()[avatar_uuid]
 		assert(vars and vars.FOXRPC and vars.FOXRPC.session == session, "Avatar session expired")
 
 		request = sanitize(request)
@@ -89,7 +90,6 @@ end
 ---@field endpoint FOXRPC.Endpoint?
 local store = { version = "1.1", session = session }
 avatar:store("FOXRPC", store)
-local avatar_uuid = avatar:getUUID()
 
 ---@alias FOXRPC.Endpoint fun(pl: table): table
 ---@type FOXRPC.Endpoint
