@@ -1,6 +1,6 @@
 # FOX's Color Wheel
 
-
+<img width="800" height="500" alt="thumb-colorwheel" src="https://github.com/user-attachments/assets/3281176c-8b9d-4f9d-a5ea-3e66e3e42c4f" />
 
 ## Documentation
 
