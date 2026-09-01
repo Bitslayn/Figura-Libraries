@@ -28,6 +28,7 @@ end
 Anything that is not a string, number, or boolean will be stripped from the request and response.
 # Call Addon
 There is an addon which makes the process more streamlined by introducing chainable methods.
+
 Avatar A - Caller
 ```lua
 local RPC_Call = require("./RPC_Call")
