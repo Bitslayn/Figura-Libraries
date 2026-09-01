@@ -1,3 +1,4 @@
+# Guide
 You can send requests to other avatars by passing in their UUID and giving a request
 
 Avatar A - Sender
@@ -24,10 +25,28 @@ function RPC.events.on_receive(uuid, request)
   end
 end
 ```
-The sender can then read the response and run their code.
+Anything that is not a string, number, or boolean will be stripped from the request and response.
+# Call Addon
+There is an addon which makes the process more streamlined by introducing chainable methods.
+Avatar A - Caller
 ```lua
-if res.success then
-  animations.model.Wave:play()
+local RPC_Call = require("./RPC_Call")
+
+local avatar_b = RPC_Call.get("18af3143-5056-4122-9c8c-9d3eb956c407")
+
+if avatar_b:wave() == true then
+    animations.model.Wave:play() -- Wave back
 end
 ```
-Anything that is not a string, number, or boolean will be stripped from the request and response.
+Their avatar would listen for the request and send a response. Requests can be filtered out by sender uuid.
+
+Avatar B - Library Holder
+```lua
+local RPC_Call = require("./RPC_Call")
+
+RPC_Call.register("wave", function(uuid, ...)
+    if uuid ~= "6284a02d-272a-4d4e-9788-fbcf0a835337" then return end -- Only wave to Avatar A
+    animations.model.Wave:play()
+    return true
+end)
+```
