@@ -17,7 +17,7 @@ Their avatar would listen for the request and send a response. Requests can be f
 local RPC = require("./RPC")
 
 function RPC.events.on_receive(uuid, request)
-  if uuid == "6284a02d-272a-4d4e-9788-fbcf0a835337" then return end
+  if uuid ~= "6284a02d-272a-4d4e-9788-fbcf0a835337" then return end
 
   if request.foo == "bar" then
     animations.model.Wave:play()
