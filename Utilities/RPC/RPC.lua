@@ -3,7 +3,7 @@ ____  ___ __   __
 | __|/ _ \\ \ / /
 | _|| (_) |> w <
 |_|  \___//_/ \_\
-FOX's RPC Protocol v1.1
+FOX's RPC Protocol v1.2
 
 Allows for securely sending and receiving messages between avatars
 
@@ -65,7 +65,8 @@ local event = {
 local function new_endpoint(uuid)
 	return function(request)
 		local vars = world.avatarVars()[avatar_uuid]
-		assert(vars and vars.FOXRPC and vars.FOXRPC.session == session, "Avatar session expired")
+		assert(vars and vars.FOXRPC, "Avatar doesn't have FOXRPC")
+		assert(vars.FOXRPC.session == session, "Avatar session expired")
 
 		request = sanitize(request)
 
@@ -88,11 +89,11 @@ end
 ---@alias FOXRPC.Vars {FOXRPC: FOXRPC.Store?}
 ---@class FOXRPC.Store
 ---@field endpoint FOXRPC.Endpoint?
-local store = { version = "1.1", session = session }
+local store = { version = "1.2", session = session }
 avatar:store("FOXRPC", store)
 
 ---@alias FOXRPC.Endpoint fun(pl: table): table
----@type FOXRPC.Endpoint
+---@type FOXRPC.Endpoint?
 local endpoint
 
 ---Create new endpoint for uuid
@@ -100,7 +101,7 @@ local endpoint
 function store.prompter(uuid)
 	---@type FOXRPC.Vars?
 	local vars = world.avatarVars()[uuid]
-	if not (vars and vars.FOXRPC) then return end
+	assert(vars and vars.FOXRPC, "Avatar doesn't have FOXRPC")
 
 	-- Refuse connection if this script is outdated
 	if client.compareVersions(store.version, vars.FOXRPC.version) == -1 then return end
@@ -115,11 +116,9 @@ end
 function store.acceptor(uuid)
 	---@type FOXRPC.Vars?
 	local vars = world.avatarVars()[uuid]
-	if not (vars and vars.FOXRPC) then return end
+	assert(vars and vars.FOXRPC, "Avatar doesn't have FOXRPC")
 
-	if vars.FOXRPC.endpoint then
-		endpoint = vars.FOXRPC.endpoint
-	end
+	endpoint = vars.FOXRPC.endpoint
 end
 
 --#ENDREGION --=================================================================================================================
@@ -127,7 +126,7 @@ end
 --==============================================================================================================================
 
 ---@class FOXRPC
-local FOXRPC = {
+local RPC = {
 	---@type FOXRPC.Events
 	events = setmetatable({}, { __newindex = function(_, k, v) event[k][#event[k] + 1] = v end }),
 }
@@ -138,17 +137,19 @@ local FOXRPC = {
 ---@param uuid string
 ---@param request table
 ---@return table response
-function FOXRPC.send(uuid, request)
+function RPC.send(uuid, request)
 	---@type FOXRPC.Vars?
 	local vars = world.avatarVars()[uuid]
 	assert(vars and vars.FOXRPC, "Avatar doesn't have FOXRPC")
 
+	endpoint = nil
 	branch_stack(vars.FOXRPC.prompter, avatar_uuid)
-	local response = branch_stack(endpoint, sanitize(request))
+	assert(endpoint, "Endpoint not received")
 
+	local response = branch_stack(endpoint, sanitize(request))
 	return sanitize(response)
 end
 
-return FOXRPC
+return RPC
 
 --#ENDREGION
