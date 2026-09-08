@@ -160,7 +160,7 @@ local click = keybinds:of("FOXColorPicker - Click", "key.mouse.left", true):enab
 local function hue_drag()
 	if not click:isPressed() then events.render:remove(hue_drag) end
 
-	local mouse_pos = (client.getMousePos() / client.getGuiScale() - pos) / scale
+	local mouse_pos = (client.getMousePos() / client.getGuiScale() - pos.xy) / scale
 	local x, y = mouse_pos:unpack()
 
 	local angle = math.atan2(x, -y)
@@ -178,7 +178,7 @@ end
 local function sv_drag()
 	if not click:isPressed() then events.render:remove(sv_drag) end
 
-	local mouse_pos = (client.getMousePos() / client.getGuiScale() - pos) / scale
+	local mouse_pos = (client.getMousePos() / client.getGuiScale() - pos.xy) / scale
 	local x, y = mouse_pos:unpack()
 	x = math.clamp(-x / 24, -1, 1)
 	y = math.clamp(-y / 24, -1, 1)
@@ -195,7 +195,7 @@ end
 function click.press()
 	if not (host:isCursorUnlocked() or host:isChatOpen()) then return end
 
-	local mouse_pos = (client.getMousePos() / client.getGuiScale() - pos) / scale
+	local mouse_pos = (client.getMousePos() / client.getGuiScale() - pos.xy) / scale
 	local mouse_dist = mouse_pos:length()
 	if 40 < mouse_dist and mouse_dist < 50 then
 		events.render:register(hue_drag)
