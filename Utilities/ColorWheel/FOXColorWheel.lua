@@ -3,7 +3,7 @@ ____  ___ __   __
 | __|/ _ \\ \ / /
 | _|| (_) |> w <
 |_|  \___//_/ \_\
-FOX's Color Wheel
+FOX's Color Wheel v1.1
 
 Github: https://github.com/Bitslayn/FOX-s-Figura-APIs/blob/main/Utilities/ColorWheel
 ]]
@@ -30,7 +30,7 @@ local txtr = textures:newTexture("FOXCW", 7, 7)
 
 	-- Draw sat/val graph
 	:pixel(2, 2, vec(1, 1, 1))
-	:fill(3, 2, 2, 2, vec(1, 0, 0))
+	:applyFunc(3, 2, 2, 2, function() return vec(1, 0, 0, 1) end)
 	:fill(2, 3, 2, 1, vec(0, 0, 0))
 	:update()
 
@@ -152,7 +152,7 @@ end
 
 local pos = vec(0, 0)
 local scale = 1
-local color = vec(1, 0, 0)
+local color = vec(1, 1, 1)
 
 local click = keybinds:of("FOXColorPicker - Click", "key.mouse.left", true):enabled(false)
 
@@ -169,8 +169,8 @@ local function hue_drag()
 	hue_update(h)
 	hue_format(color)
 
-	txtr:setPixel(3, 2, vectors.hsvToRGB(h, 1, 1))
-		:setPixel(4, 2, vectors.hsvToRGB(color))
+	txtr:pixel(3, 2, vectors.hsvToRGB(h, 1, 1))
+		:pixel(4, 2, vectors.hsvToRGB(color))
 		:update()
 end
 
@@ -187,7 +187,7 @@ local function sv_drag()
 	color.yz = vec((1 - x) / 2, (1 + y) / 2)
 	hue_format(color)
 
-	txtr:setPixel(4, 2, vectors.hsvToRGB(color))
+	txtr:pixel(4, 2, vectors.hsvToRGB(color))
 		:update()
 end
 
@@ -256,7 +256,8 @@ function lib:color(rgb)
 	sv_point:pos(x, y)
 
 	txtr:pixel(3, 2, vectors.hsvToRGB(color.x, 1, 1))
-		:fill(4, 2, 1, 2, vectors.hsvToRGB(color))
+		:pixel(4, 2, vectors.hsvToRGB(color))
+		:pixel(4, 3, vectors.hsvToRGB(color))
 		:update()
 
 	return self
