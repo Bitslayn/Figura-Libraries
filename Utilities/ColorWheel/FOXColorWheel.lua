@@ -150,7 +150,7 @@ end
 --#REGION ˚♡ Mouse Click ♡˚
 --==============================================================================================================================
 
-local pos = vec(0, 0)
+local pos = vec(0, 0, 0)
 local scale = 1
 local color = vec(1, 1, 1)
 
@@ -217,9 +217,9 @@ local lib = {}
 ---@param x number
 ---@param y number
 ---@return self
-function lib:pos(x, y)
-	pos = vec(x, y)
-	root:pos(-pos.xy_)
+function lib:pos(x, y, z)
+	pos = pos:set(x, y, z)
+	root:pos(pos * vec(-1, -1, 1))
 	return self
 end
 
