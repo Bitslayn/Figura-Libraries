@@ -3,319 +3,328 @@ ____  ___ __   __
 | __|/ _ \\ \ / /
 | _|| (_) |> w <
 |_|  \___//_/ \_\
-FOX's Lift Protocol v1.4b
+FOX's Lift v2.0
 
-A unique interactions protocol focusing on security
 Allows for interacting with the viewer with a whitelist
-Supports Extura, Goofy, Silly, or a custom addon
+Uses SillyPlugin for its movement functions
 
-Github: https://github.com/Bitslayn/FOX-s-Figura-APIs/blob/main/Utilities/Lift
+Github: https://github.com/Bitslayn/Figura-Libraries/tree/main/Utilities/RPC
 ]]
 
 --==============================================================================================================================
 --#REGION ˚♡ Config ♡˚
 --==============================================================================================================================
 
-local cfg = {
+-- FOXRPC is required to use Lift v2.x
+-- https://github.com/Bitslayn/Figura-Libraries/tree/main/Utilities/RPC
+
+local RPC = require("./RPC")
+
+---@class FOXLift.Config
+---@field whitelist table<FOXLift.PlayerID, boolean>
+local config = {
 	---Set whether other players can move you
 	enabled = true,
-	---List of names who are allowed to call your functions
-	---@type table<string, boolean|{maxPos: number, maxVel: number}?>
+	---If true, uses the whitelist as a blacklist
+	blacklist = false,
+	---List of names or uuids who are allowed to call your functions
 	whitelist = {
 		Steve = true,
 		Alex = true,
 	},
-
-	---Set the max pos distance from player
-	maxPos = 10,
-	---Set the max velocity length
-	maxVel = 10,
-}
-
--- Define map of functions, and api to use (Goofy, Extura, etc.)
-
----@type table
----@diagnostic disable-next-line: undefined-global
-local api = silly or goofy or host
-local map = {
-	setPos = api.setPos,
-	setRot = api.setRot,
-	setVel = api.setVelocity,
 }
 
 --#ENDREGION --=================================================================================================================
---#REGION ˚♡ Proxy ♡˚
+--#REGION ˚♡ Movement ♡˚
 --==============================================================================================================================
 
----@diagnostic disable: unused-local
+-- If you don't use SillyPlugin then you may want to change these functions.
+-- Security isn't much of a concern here as it is impossible for someone to send a NaN, Infinity, or other non-serializable types.
+-- Avoid changing any fields or adding functions that other players wouldn't otherwise know about.
 
-local session = client.intUUIDToString(client.generateUUID())
-avatar:store("FOXLift.Session", session)
+---@class FOXLift.MovementFunctions
+local internal = {}
 
----Proxy of all callable functions passed to avatars on the whitelist
+---Tries to set the position of a player
 ---
----Do not touch this if you don't know what you're doing! NaN checking and clamping is your responsibility!
----@type FOXLift.Proxy.Table
-local proxy = setmetatable({
-	setPos = function(x, y, z, uuid, player, maxPos, maxVel)
-		local vec = vectors.vec3(x, y, z):applyFunc(function(v)
-			return v == v and v or 0
-		end)
+---Can fail if there are blocks in the way
+---@param id FOXLift.PlayerID
+---@param x number
+---@param y number
+---@param z number
+---@param ctx string?
+---@overload fun(id: FOXLift.PlayerID, pos: Vector3, ctx: string?)
+---@diagnostic disable-next-line: unused-local
+function internal.setPos(id, x, y, z, ctx)
+	silly:setPos(x, y, z)
+end
 
-		vec = vec - player:getPos()
-		vec:clampLength(0, maxPos)
-		vec = vec + player:getPos()
+---Tries to move a player relative to their current position
+---
+---Can fail if there are blocks in the way
+---@param id FOXLift.PlayerID
+---@param x number
+---@param y number
+---@param z number
+---@param ctx string?
+---@overload fun(id: FOXLift.PlayerID, pos: Vector3, ctx: string?)
+---@diagnostic disable-next-line: unused-local
+function internal.addPos(id, x, y, z, ctx)
+	local _x, _y, _z = player:getPos():unpack()
+	silly:setPos(x + _x, y + _y, z + _z)
+end
 
-		x, y, z = vec:unpack()
-		return map.setPos(api, x, y, z, uuid)
-	end,
-	setRot = function(x, y, z, uuid, player, maxPos, maxVel)
-		local vec = vectors.vec2(x, y):applyFunc(function(v)
-			return v == v and v or 0
-		end)
+---Forcefully sets the position of a player
+---
+---Ignores walls but can fail if the destination is inside a block
+---@param id FOXLift.PlayerID
+---@param x number
+---@param y number
+---@param z number
+---@param ctx string?
+---@overload fun(id: FOXLift.PlayerID, pos: Vector3, ctx: string?)
+---@diagnostic disable-next-line: unused-local
+function internal.forcePos(id, x, y, z, ctx)
+	---@diagnostic disable-next-line: unused-local
+	local _x, _y, _z = player:getPos():unpack()
+	silly:setPos(_x, 321, _z, true)
+	silly:setPos(x, 321, z, true)
+	silly:setPos(x, y, z, true)
+end
 
-		x, y = vec:unpack()
-		return map.setRot(api, x, y, uuid)
-	end,
-	setVel = function(x, y, z, uuid, player, maxPos, maxVel)
-		local vec = vectors.vec3(x, y, z):applyFunc(function(v)
-			return v == v and v or 0
-		end)
+---Sets the velocity of a player
+---@param id FOXLift.PlayerID
+---@param x number
+---@param y number
+---@param z number
+---@param ctx string?
+---@overload fun(id: FOXLift.PlayerID, vel: Vector3, ctx: string?)
+---@diagnostic disable-next-line: unused-local
+function internal.setVel(id, x, y, z, ctx)
+	silly:setVelocity(x, y, z)
+end
 
-		vec:clampLength(0, maxVel)
+---Adds to the velocity of a player
+---@param id FOXLift.PlayerID
+---@param x number
+---@param y number
+---@param z number
+---@param ctx string?
+---@overload fun(id: FOXLift.PlayerID, vel: Vector3, ctx: string?)
+---@diagnostic disable-next-line: unused-local
+function internal.addVel(id, x, y, z, ctx)
+	local _x, _y, _z = table.unpack(player:getNbt().Motion)
+	silly:setVelocity(x + _x, y + _y, z + _z)
+end
 
-		x, y, z = vec:unpack()
-		return map.setVel(api, x, y, z, uuid)
-	end,
-	addPos = function(x, y, z, uuid, player, maxPos, maxVel)
-		local vec = vectors.vec3(x, y, z):applyFunc(function(v)
-			return v == v and v or 0
-		end)
+---Sets the head rotation of a player
+---@param id FOXLift.PlayerID
+---@param x number
+---@param y number
+---@param ctx string?
+---@overload fun(id: FOXLift.PlayerID, rot: Vector2, ctx: string?)
+---@diagnostic disable-next-line: unused-local
+function internal.setRot(id, x, y, ctx)
+	silly:setRot(x, y)
+end
 
-		vec:clampLength(0, maxPos)
-		vec = vec + player:getPos()
+---Adds to the head rotation of a player
+---@param id FOXLift.PlayerID
+---@param x number
+---@param y number
+---@param ctx string?
+---@overload fun(id: FOXLift.PlayerID, rot: Vector2, ctx: string?)
+---@diagnostic disable-next-line: unused-local
+function internal.addRot(id, x, y, ctx)
+	local _y, _x = table.unpack(player:getNbt().Rotation)
+	silly:setRot(x + _x, y + _y)
+end
 
-		x, y, z = vec:unpack()
-		return map.setPos(api, x, y, z, uuid)
-	end,
-	addRot = function(x, y, z, uuid, player, maxPos, maxVel)
-		local vec = vectors.vec2(x, y):applyFunc(function(v)
-			return v == v and v or 0
-		end)
+--#ENDREGION --=================================================================================================================
+--#REGION ˚♡ Lift ♡˚
+--==============================================================================================================================
 
-		vec = vec + player:getRot()
+---@class FOXLift: FOXLift.MovementFunctions
+local lift = { config = config, internal = internal }
+avatar:store("LiftRPC", "v2.0")
 
-		x, y = vec:unpack()
-		return map.setRot(api, x, y, uuid)
-	end,
-	addVel = function(x, y, z, uuid, player, maxPos, maxVel)
-		local vec = vectors.vec3(x, y, z):applyFunc(function(v)
-			return v == v and v or 0
-		end)
+---Either the player's username or UUID
+---@alias FOXLift.PlayerID string
 
-		vec = vec + vectors.vec3(table.unpack(player:getNbt().Motion))
-		vec:clampLength(0, maxVel)
+---@param id FOXLift.PlayerID
+---@return string? uuid
+local function getUUID(id)
+	local entity = world.avatarVars()[id] and world.getEntity(id) or world.getPlayers()[id]
+	if not entity then return end
+	return entity:getUUID()
+end
 
-		x, y, z = vec:unpack()
-		return map.setVel(api, x, y, z, uuid)
-	end,
-	forcePos = function(x, y, z, uuid, player, maxPos, maxVel)
-		local vec = vectors.vec3(x, y, z):applyFunc(function(v)
-			return v == v and v or 0
-		end)
+---Returns if a player has LiftRPC
+---@param id FOXLift.PlayerID
+---@return boolean
+function lift.hasLift(id)
+	local vars = world.avatarVars()[getUUID(id)]
+	return not not (vars and vars.LiftRPC)
+end
 
-		vec = vec - player:getPos()
-		vec:clampLength(0, maxPos)
-		vec = vec + player:getPos()
+---Returns if a player with LiftRPC is able to be lifted at all
+---@param id FOXLift.PlayerID
+---@return boolean
+function lift.isEnabled(id)
+	local ok, res = pcall(RPC.send, getUUID(id), { lib = "Lift", id = 1, key = "enabled" })
+	return ok and res[1] or false
+end
 
-		if world.getBlockState(vec):isSolidBlock() then return false, "destination is inside a block" end
+---Returns the whitelist table of a player with LiftRPC
+---@param id FOXLift.PlayerID
+---@return table<FOXLift.PlayerID, boolean>?
+function lift.getWhitelist(id)
+	local ok, res = pcall(RPC.send, getUUID(id), { lib = "Lift", id = 1, key = "whitelist" })
+	return ok and res[1] or nil
+end
 
-		x, y, z = vec:unpack()
+---Returns if a player with LiftRPC has their whitelist table set to blacklist
+---@param id FOXLift.PlayerID
+---@return boolean
+function lift.usesBlacklist(id)
+	local ok, res = pcall(RPC.send, getUUID(id), { lib = "Lift", id = 1, key = "blacklist" })
+	return ok and res[1] or false
+end
 
-		local px, py, pz = player:getPos():unpack()
-		map.setPos(api, px, 321, pz, true)
-		map.setPos(api, x, 321, z, true)
-		map.setPos(api, x, y, z, true)
+---Returns if you can lift a player
+---@param id FOXLift.PlayerID
+---@return boolean
+function lift.canLift(id)
+	if not (lift.hasLift(id) and lift.isEnabled(id)) then return false end
 
-		return map.setPos(api, x, y, z, uuid)
-	end,
-}, {
-	__call = function(self, uuid, usr)
-		return function(key, x, y, z)
-			local player = world.getEntity(avatar:getUUID())
-			assert(player, "Player isn't loaded")
+	local whitelist = lift.getWhitelist(id)
+	if not whitelist then return false end
+	
+	return lift.usesBlacklist(id) ~= (whitelist[avatar:getEntityName()] or whitelist[avatar:getUUID()])
+end
 
-			if player:getVariable("FOXLift.Session") ~= session then return end
-			if not cfg.whitelist[usr] then return end
-			if not cfg.enabled then return end
+--#ENDREGION --=================================================================================================================
+--#REGION ˚♡ Events ♡˚
+--==============================================================================================================================
 
-			local maxPos = cfg.maxPos
-			local maxVel = cfg.maxVel
-			if type(cfg.whitelist[usr]) == "table" then
-				maxPos = cfg.whitelist[usr].maxPos or maxPos
-				maxVel = cfg.whitelist[usr].maxVel or maxVel
-			end
+---@class FOXLift.Events
+local event = {
+	---@type fun(uuid: string) This event runs the moment you start being lifted by a new person. A callback gives you that person's uuid.
+	---@diagnostic disable-next-line: assign-type-mismatch
+	on_lift = {},
+	---@type fun(uuid: string, ctx: string) This event runs for every lift function called on you. A callback gives you the person's uuid and the lift context.
+	---@diagnostic disable-next-line: assign-type-mismatch
+	each_lift = {},
+	---@type fun(uuid: string) This event runs the moment you stop being lifted by any particular person. A callback gives you that person's uuid.
+	---@diagnostic disable-next-line: assign-type-mismatch
+	on_unlift = {},
 
-			return self[key](x, y, z, uuid, player, maxPos, maxVel)
-		end
+	---@type fun() This event runs the moment you start being lifted by anyone.
+	---@diagnostic disable-next-line: assign-type-mismatch
+	first_lift = {},
+	---@type fun() This event runs the moment you stop being lifted by everyone who was lifting you.
+	---@diagnostic disable-next-line: assign-type-mismatch
+	last_lift = {},
+}
+
+---@type FOXLift.Events
+lift.events = setmetatable({}, {
+	__newindex = function(_, k, v)
+		assert(type(v) == "function", "Cannot assign value to event")
+		event[k][#event[k] + 1] = v
 	end,
 })
 
---#ENDREGION --=================================================================================================================
---#REGION ˚♡ Protocol ♡˚
---==============================================================================================================================
-
--- This is the current protocol, made with the help of 4P5.
--- It's very simple, calling acceptors which store only the viewer's proxy function.
-
--- The proxy function, provided by the wrapper, gives avatars access to functions in the viewer scope.
-
--- All you'll need to make Lift's protocol compatible with your wrapper is to provide your own proxy and config.
--- You can make the prompter do anything as long as lib.prompted stores the proxy as a function. The prompter is host scope.
--- Modifying what the acceptor does requires a Lift protocol version bump. Avoid touching this as it is viewer scope.
--- When an avatar calls your lib.prompted, they do so as pcall(lib.prompted, key, x, y, z). You will need a __call metamethod in your proxy.
-
----@class FOXLift.Protocol
----@field config FOXLift.Config
-local lib = { config = cfg, version = 1.3 }
-avatar:store("FOXLift", lib)
-
----Creates and shares proxy function to all avatars in this avatar's whitelist.
-function lib.prompter()
-	local plr = world.getPlayers()
-
-	for usr in pairs(lib.config.whitelist) do
-		local cur = plr[usr]
-		if cur then
-			local var = cur:getVariable("FOXLift")
-			local acceptor = var and var.acceptor
-
-			lib.prompted = proxy(cur:getUUID(), usr)
-			pcall(acceptor)
-			lib.prompted = nil
+---@type table<string, integer>
+local lifters = {}
+function events.tick()
+	for uuid, t in pairs(lifters) do
+		if t > 1 then
+			lifters[uuid] = t - 1
+		else
+			for i = 1, #event.on_unlift do event.on_unlift[i](uuid) end
+			lifters[uuid] = nil
+			if not next(lifters) then
+				for i = 1, #event.last_lift do event.last_lift[i]() end
+			end
 		end
 	end
 end
 
----Accepted function stored on other avatars when a function has been accepted from the viewer.
----@type function?
-local accepted
+---@param uuid string
+---@param request FOXLift.Request
+local function call_events(uuid, request)
+	local ctx = request.val[#request.val]
 
----Receives and stores proxy function.
-function lib.acceptor()
-	local var = client.getViewer():getVariable("FOXLift")
-	accepted = var.prompted or accepted
+	if not next(lifters) then
+		for i = 1, #event.first_lift do event.first_lift[i]() end
+	end
+	if not lifters[uuid] then
+		for i = 1, #event.on_lift do event.on_lift[i](uuid) end
+	end
+	lifters[uuid] = 5
+
+	for i = 1, #event.each_lift do event.each_lift[i](uuid, ctx) end
 end
-
-local var = client.getViewer():getVariable("FOXLift")
-local prompter = var and var.prompter
-pcall(prompter)
 
 --#ENDREGION --=================================================================================================================
---#REGION ˚♡ Wrapper ♡˚
+--#REGION ˚♡ RPC ♡˚
 --==============================================================================================================================
 
----@class FOXLift.Config
----@field enabled boolean Set whether other players can move you
----@field whitelist table<string, boolean> List of names who are allowed to call your functions
----@field maxPos number Set the max pos distance from player
----@field maxVel number Set the max velocity length
----@alias FOXLift.Position
----| fun(uuid: string?, x: number, y: number, z: number): boolean, ...
----| fun(uuid: string?, pos: Vector3): boolean, ...
----@alias FOXLift.Velocity
----| fun(uuid: string?, x: number, y: number, z: number): boolean, ...
----| fun(uuid: string?, vel: Vector3): boolean, ...
----@alias FOXLift.Rotation
----| fun(uuid: string?, x: number, y: number): boolean, ...
----| fun(uuid: string?, rot: Vector2): boolean, ...
----@alias FOXLift.Proxy.Function
----| fun(x: number, y: number, z: number, uuid: string): ...
----@alias FOXLift.Proxy.Table
----| table<string, FOXLift.Proxy.Function>
----@class FOXLift
----@field config FOXLift.Config
----@field proxy FOXLift.Proxy.Table
----@field setPos FOXLift.Position Sets the host's position. Returns a callback saying whether this function executed successfully
----@field addPos FOXLift.Position Sets the host's position offset from their current position. Returns a callback saying whether this function executed successfully
----@field forcePos FOXLift.Position Sets the host's true position allowing teleportation through blocks. Returns a callback saying whether this function executed successfully
----@field setVel FOXLift.Velocity Sets the host's velocity. Returns a callback saying whether this function executed successfully
----@field addVel FOXLift.Velocity Sets the host's velocity offset from their current velocity. Returns a callback saying whether this function executed successfully
----@field setRot FOXLift.Rotation Sets the host's rotation. Returns a callback saying whether this function executed successfully
----@field addRot FOXLift.Rotation Sets the host's rotation offset from their current rotation. Returns a callback saying whether this function executed successfully
-local lift = { config = cfg, proxy = proxy }
+---@class FOXLift.Request
+---@field lib "Lift"
+---@field id integer
+---@field key string
+---@field val unknown[]
 
----Returns if the target player has FOXLift
----@param name string? Name of the player to check, defaults to viewer
----@return boolean
-function lift.hasLift(name)
-	local ent = name and world.getPlayers()[name] or client.getViewer()
-	local _var = ent:getVariable("FOXLift")
-	return _var and true or false
+---@param uuid string
+---@param request FOXLift.Request
+function RPC.events.on_receive(uuid, request)
+	if request.lib ~= "Lift" then return end
+
+	if request.id == 0 then
+		-- An ID of 0 means a movement request
+
+		-- Check enabled
+		if not lift.config.enabled then return end
+
+		-- Check whitelist
+		local entity = world.getEntity(uuid)
+		if lift.config.blacklist == (entity and lift.config.whitelist[entity:getName()] or lift.config.whitelist[uuid]) then return end
+
+		-- Call function
+		local ok = pcall(lift.internal[request.key], uuid, table.unpack(request.val))
+		if not ok then return end
+
+		-- Call events
+		call_events(uuid, request)
+	elseif request.id == 1 then
+		-- An ID of 1 means a config request
+
+		return { lift.config[request.key] }
+	end
 end
-
----Returns a config from the target player by its key
----@param key string Variable key to get
----@param name string? Name of the player to check, defaults to viewer
----@return unknown?
-function lift.getConfig(key, name)
-	local ent = name and world.getPlayers()[name] or client.getViewer()
-	local _var = ent:getVariable("FOXLift")
-	local _cfg = _var and _var.config
-	return _cfg and (key and _cfg[key] or _cfg) or nil
-end
-
----Returns if the lifter is whitelisted by the liftee
----
----Used to tell if the lifter is allowed to lift the liftee
----@param liftee string? Name of the player who'd be lifted, defaults to viewer
----@param lifter string? Name of the player who'd be doing the lifting, defaults to host
----@return boolean?
-function lift.isWhitelisted(liftee, lifter)
-	local _cfg = lift.getConfig("whitelist", liftee)
-	return _cfg and _cfg[lifter or avatar:getEntityName()]
-end
-
----Returns if the target player has FOXLift enabled
----@param name string? Name of the player to check, defaults to viewer
----@return boolean?
-function lift.isEnabled(name)
-	return lift.getConfig("enabled", name)
-end
-
-lift.checkWhitelisted = lift.isWhitelisted
-lift.checkEnabled = lift.isEnabled
 
 setmetatable(lift, {
-	---Allow indexing `lift` and calling viewer functions
-	---@param _ FOXLift
-	---@param key string
 	__index = function(_, key)
-		---@param uuid FOXLift
-		---@param x number|Vector2|Vector3
-		---@param y number
-		---@param z number?
-		return function(uuid, x, y, z)
-			if type(uuid) == "string" and client.getViewer():getUUID() ~= uuid then return true, "viewer isn't target" end -- Filter out viewer uuid
+		return function(id, ...)
+			local val = { ... }
 
-			if type(x):find("Vector") then
-				x, y, z = x --[[@as Vector.any]]:unpack()
+			-- Unpack vector
+			if type(val[1]):find("Vector") then
+				local vec = { table.remove(val, 1):unpack() }
+				for i = 1, #vec do
+					table.insert(val, i, vec[i])
+				end
 			end
 
-			if not accepted then return false, "accepted is nil" end
-			return pcall(accepted, key, x, y, z)
-		end
-	end,
-})
+			-- Set default context
+			if type(val[#val]) ~= "string" then
+				val[#val + 1] = "DEFAULT"
+			end
 
-setmetatable(cfg.whitelist, {
-	---Allow for adding names to whitelist
-	---@param tbl table
-	---@param key string
-	---@param val boolean
-	__newindex = function(tbl, key, val)
-		rawset(tbl, key, val)
-		lib.prompter()
+			pcall(RPC.send, getUUID(id), { lib = "Lift", id = 0, key = key, val = val })
+		end
 	end,
 })
 
