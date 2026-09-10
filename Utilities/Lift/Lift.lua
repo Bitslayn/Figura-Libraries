@@ -3,7 +3,7 @@ ____  ___ __   __
 | __|/ _ \\ \ / /
 | _|| (_) |> w <
 |_|  \___//_/ \_\
-FOX's Lift v2.0
+FOX's Lift v2.1
 
 Allows for interacting with the viewer with a whitelist
 Uses SillyPlugin for its movement functions
@@ -101,7 +101,7 @@ end
 ---@overload fun(id: FOXLift.PlayerID, vel: Vector3, ctx: string?)
 ---@diagnostic disable-next-line: unused-local
 function internal.setVel(id, x, y, z, ctx)
-	silly:setVelocity(x, y, z)
+	silly:setVel(x, y, z)
 end
 
 ---Adds to the velocity of a player
@@ -114,7 +114,7 @@ end
 ---@diagnostic disable-next-line: unused-local
 function internal.addVel(id, x, y, z, ctx)
 	local _x, _y, _z = table.unpack(player:getNbt().Motion)
-	silly:setVelocity(x + _x, y + _y, z + _z)
+	silly:setVel(x + _x, y + _y, z + _z)
 end
 
 ---Sets the head rotation of a player
@@ -146,7 +146,7 @@ end
 
 ---@class FOXLift: FOXLift.MovementFunctions
 local lift = { config = config, internal = internal }
-avatar:store("LiftRPC", "v2.0")
+avatar:store("LiftRPC", config)
 
 ---Either the player's username or UUID
 ---@alias FOXLift.PlayerID string
@@ -171,24 +171,24 @@ end
 ---@param id FOXLift.PlayerID
 ---@return boolean
 function lift.isEnabled(id)
-	local ok, res = pcall(RPC.send, getUUID(id), { lib = "Lift", id = 1, key = "enabled" })
-	return ok and res[1] or false
+	local vars = world.avatarVars()[getUUID(id)]
+	return vars and vars.LiftRPC and vars.LiftRPC.enabled or false
 end
 
 ---Returns the whitelist table of a player with LiftRPC
 ---@param id FOXLift.PlayerID
 ---@return table<FOXLift.PlayerID, boolean>?
 function lift.getWhitelist(id)
-	local ok, res = pcall(RPC.send, getUUID(id), { lib = "Lift", id = 1, key = "whitelist" })
-	return ok and res[1] or nil
+	local vars = world.avatarVars()[getUUID(id)]
+	return vars and vars.LiftRPC and vars.LiftRPC.whitelist
 end
 
 ---Returns if a player with LiftRPC has their whitelist table set to blacklist
 ---@param id FOXLift.PlayerID
 ---@return boolean
 function lift.usesBlacklist(id)
-	local ok, res = pcall(RPC.send, getUUID(id), { lib = "Lift", id = 1, key = "blacklist" })
-	return ok and res[1] or false
+	local vars = world.avatarVars()[getUUID(id)]
+	return vars and vars.LiftRPC and vars.LiftRPC.blacklist
 end
 
 ---Returns if you can lift a player
@@ -199,7 +199,7 @@ function lift.canLift(id)
 
 	local whitelist = lift.getWhitelist(id)
 	if not whitelist then return false end
-	
+
 	return lift.usesBlacklist(id) ~= (whitelist[avatar:getEntityName()] or whitelist[avatar:getUUID()])
 end
 
@@ -282,27 +282,19 @@ end
 function RPC.events.on_receive(uuid, request)
 	if request.lib ~= "Lift" then return end
 
-	if request.id == 0 then
-		-- An ID of 0 means a movement request
+	-- Check enabled
+	if not lift.config.enabled then return end
 
-		-- Check enabled
-		if not lift.config.enabled then return end
+	-- Check whitelist
+	local entity = world.getEntity(uuid)
+	if lift.config.blacklist == (entity and lift.config.whitelist[entity:getName()] or lift.config.whitelist[uuid]) then return end
 
-		-- Check whitelist
-		local entity = world.getEntity(uuid)
-		if lift.config.blacklist == (entity and lift.config.whitelist[entity:getName()] or lift.config.whitelist[uuid]) then return end
+	-- Call function
+	local ok = pcall(lift.internal[request.key], uuid, table.unpack(request.val))
+	if not ok then return end
 
-		-- Call function
-		local ok = pcall(lift.internal[request.key], uuid, table.unpack(request.val))
-		if not ok then return end
-
-		-- Call events
-		call_events(uuid, request)
-	elseif request.id == 1 then
-		-- An ID of 1 means a config request
-
-		return { lift.config[request.key] }
-	end
+	-- Call events
+	call_events(uuid, request)
 end
 
 setmetatable(lift, {
@@ -323,7 +315,7 @@ setmetatable(lift, {
 				val[#val + 1] = "DEFAULT"
 			end
 
-			pcall(RPC.send, getUUID(id), { lib = "Lift", id = 0, key = key, val = val })
+			pcall(RPC.send, getUUID(id), { lib = "Lift", key = key, val = val })
 		end
 	end,
 })
