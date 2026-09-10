@@ -3,7 +3,7 @@ ____  ___ __   __
 | __|/ _ \\ \ / /
 | _|| (_) |> w <
 |_|  \___//_/ \_\
-FOX's Lift v2.1
+FOX's Lift v2.0
 
 Allows for interacting with the viewer with a whitelist
 Uses SillyPlugin for its movement functions
@@ -14,11 +14,6 @@ Github: https://github.com/Bitslayn/Figura-Libraries/tree/main/Utilities/Lift
 --==============================================================================================================================
 --#REGION ˚♡ Config ♡˚
 --==============================================================================================================================
-
--- FOXRPC is required to use Lift v2.x
--- https://github.com/Bitslayn/Figura-Libraries/tree/main/Utilities/RPC
-
-local RPC = require("./RPC")
 
 ---@class FOXLift.Config
 ---@field whitelist table<FOXLift.PlayerID, boolean>
@@ -141,69 +136,6 @@ function internal.addRot(id, x, y, ctx)
 end
 
 --#ENDREGION --=================================================================================================================
---#REGION ˚♡ Lift ♡˚
---==============================================================================================================================
-
----@class FOXLift: FOXLift.MovementFunctions
-local lift = { config = config, internal = internal }
-avatar:store("LiftRPC", config)
-
----Either the player's username or UUID
----@alias FOXLift.PlayerID string
-
----@param id FOXLift.PlayerID
----@return string? uuid
-local function getUUID(id)
-	local entity = world.avatarVars()[id] and world.getEntity(id) or world.getPlayers()[id]
-	if not entity then return end
-	return entity:getUUID()
-end
-
----Returns if a player has LiftRPC
----@param id FOXLift.PlayerID
----@return boolean
-function lift.hasLift(id)
-	local vars = world.avatarVars()[getUUID(id)]
-	return not not (vars and vars.LiftRPC)
-end
-
----Returns if a player with LiftRPC is able to be lifted at all
----@param id FOXLift.PlayerID
----@return boolean
-function lift.isEnabled(id)
-	local vars = world.avatarVars()[getUUID(id)]
-	return vars and vars.LiftRPC and vars.LiftRPC.enabled or false
-end
-
----Returns the whitelist table of a player with LiftRPC
----@param id FOXLift.PlayerID
----@return table<FOXLift.PlayerID, boolean>?
-function lift.getWhitelist(id)
-	local vars = world.avatarVars()[getUUID(id)]
-	return vars and vars.LiftRPC and vars.LiftRPC.whitelist
-end
-
----Returns if a player with LiftRPC has their whitelist table set to blacklist
----@param id FOXLift.PlayerID
----@return boolean
-function lift.usesBlacklist(id)
-	local vars = world.avatarVars()[getUUID(id)]
-	return vars and vars.LiftRPC and vars.LiftRPC.blacklist
-end
-
----Returns if you can lift a player
----@param id FOXLift.PlayerID
----@return boolean
-function lift.canLift(id)
-	if not (lift.hasLift(id) and lift.isEnabled(id)) then return false end
-
-	local whitelist = lift.getWhitelist(id)
-	if not whitelist then return false end
-
-	return lift.usesBlacklist(id) ~= (whitelist[avatar:getEntityName()] or whitelist[avatar:getUUID()])
-end
-
---#ENDREGION --=================================================================================================================
 --#REGION ˚♡ Events ♡˚
 --==============================================================================================================================
 
@@ -228,7 +160,7 @@ local event = {
 }
 
 ---@type FOXLift.Events
-lift.events = setmetatable({}, {
+local lift_events = setmetatable({}, {
 	__newindex = function(_, k, v)
 		assert(type(v) == "function", "Cannot assign value to event")
 		event[k][#event[k] + 1] = v
@@ -252,10 +184,8 @@ function events.tick()
 end
 
 ---@param uuid string
----@param request FOXLift.Request
-local function call_events(uuid, request)
-	local ctx = request.val[#request.val]
-
+---@param ctx string
+local function call_events(uuid, ctx)
 	if not next(lifters) then
 		for i = 1, #event.first_lift do event.first_lift[i]() end
 	end
@@ -268,54 +198,165 @@ local function call_events(uuid, request)
 end
 
 --#ENDREGION --=================================================================================================================
---#REGION ˚♡ RPC ♡˚
+--#REGION ˚♡ Gateway ♡˚
 --==============================================================================================================================
 
----@class FOXLift.Request
----@field lib "Lift"
----@field id integer
----@field key string
----@field val unknown[]
+local session = client.intUUIDToString(client.generateUUID())
 
 ---@param uuid string
----@param request FOXLift.Request
-function RPC.events.on_receive(uuid, request)
-	if request.lib ~= "Lift" then return end
+local function create_gateway(uuid)
+	---@param key string
+	---@param args table
+	return function(key, args)
+		local vars = world.avatarVars()[avatar:getUUID()]
+		if not vars or vars.FOXLift.session ~= session then return end
 
-	-- Check enabled
-	if not lift.config.enabled then return end
+		-- Check enabled
+		if not config.enabled then return end
 
-	-- Check whitelist
-	local entity = world.getEntity(uuid)
-	if lift.config.blacklist == (entity and lift.config.whitelist[entity:getName()] or lift.config.whitelist[uuid]) then return end
+		-- Check whitelist
+		local entity = world.getEntity(uuid)
+		if config.blacklist == (entity and config.whitelist[entity:getName()] or config.whitelist[uuid]) then return end
 
-	-- Call function
-	local ok = pcall(lift.internal[request.key], uuid, table.unpack(request.val))
-	if not ok then return end
+		-- Call function
+		local ok = pcall(internal[key], uuid, table.unpack(args))
+		if not ok then return end
 
-	-- Call events
-	call_events(uuid, request)
+		-- Call events
+		call_events(uuid, rawget(args, rawlen(args)))
+	end
+end
+
+--#ENDREGION --=================================================================================================================
+--#REGION ˚♡ Protocol ♡˚
+--==============================================================================================================================
+
+-- This is the current protocol, made with the help of 4P5.
+-- It's very simple, calling acceptors which store only the viewer's proxy function.
+
+-- The proxy function, provided by the wrapper, gives avatars access to functions in the viewer scope.
+
+-- All you'll need to make Lift's protocol compatible with your wrapper is to provide your own proxy and config.
+-- You can make the prompter do anything as long as lib.prompted stores the proxy as a function. The prompter is host scope.
+-- Modifying what the acceptor does requires a Lift protocol version bump. Avoid touching this as it is viewer scope.
+-- When an avatar calls your lib.prompted, they do so as pcall(lib.prompted, key, x, y, z). You will need a __call metamethod in your proxy.
+
+---@class FOXLift.Protocol
+---@field config FOXLift.Config
+local lib = { config = config, version = 1.4, session = session }
+avatar:store("FOXLift", lib)
+
+---Creates and shares proxy function to the requesting avatar.
+function lib.prompter(uuid)
+	local plr = world.getEntity(uuid)
+	if not plr then return end
+
+	local var = plr:getVariable("FOXLift")
+	lib.prompted = create_gateway(plr:getUUID())
+	pcall(var and var.acceptor)
+	lib.prompted = nil
+end
+
+---Accepted function stored on other avatars when a function has been accepted from the viewer.
+---@type function?
+local gateway
+
+---Receives and stores proxy function.
+function lib.acceptor()
+	local vars = client.getViewer():getVariable("FOXLift")
+	gateway = vars.prompted or gateway
+end
+
+do
+	local vars = client.getViewer():getVariable("FOXLift")
+	pcall(vars and vars.prompter, avatar:getUUID())
+end
+
+--#ENDREGION --=================================================================================================================
+--#REGION ˚♡ Lift ♡˚
+--==============================================================================================================================
+
+---Either the player's username or UUID
+---@alias FOXLift.PlayerID string
+
+---@param id FOXLift.PlayerID
+---@return string? uuid
+local function getUUID(id)
+	local entity = world.avatarVars()[id] and world.getEntity(id) or world.getPlayers()[id]
+	if not entity then return end
+	return entity:getUUID()
+end
+
+---@class FOXLift: FOXLift.MovementFunctions
+local lift = { config = config, internal = internal, events = lift_events }
+
+---Returns if a player has LiftRPC
+---@param id FOXLift.PlayerID
+---@return boolean
+function lift.hasLift(id)
+	local vars = world.avatarVars()[getUUID(id)]
+	return not not (vars and vars.FOXLift)
+end
+
+---Returns if a player with LiftRPC is able to be lifted at all
+---@param id FOXLift.PlayerID
+---@return boolean
+function lift.isEnabled(id)
+	local vars = world.avatarVars()[getUUID(id)]
+	return vars and vars.FOXLift and vars.FOXLift.config and vars.FOXLift.config.enabled or false
+end
+
+---Returns the whitelist table of a player with LiftRPC
+---@param id FOXLift.PlayerID
+---@return table<FOXLift.PlayerID, boolean>?
+function lift.getWhitelist(id)
+	local vars = world.avatarVars()[getUUID(id)]
+	return vars and vars.FOXLift and vars.FOXLift.config and vars.FOXLift.config.whitelist
+end
+
+---Returns if a player with LiftRPC has their whitelist table set to blacklist
+---@param id FOXLift.PlayerID
+---@return boolean
+function lift.usesBlacklist(id)
+	local vars = world.avatarVars()[getUUID(id)]
+	return vars and vars.FOXLift and vars.FOXLift.config and vars.FOXLift.config.blacklist
+end
+
+---Returns if you can lift a player
+---@param id FOXLift.PlayerID
+---@return boolean
+function lift.canLift(id)
+	if not (lift.hasLift(id) and lift.isEnabled(id)) then return false end
+
+	local whitelist = lift.getWhitelist(id)
+	if not whitelist then return false end
+
+	return lift.usesBlacklist(id) ~= (whitelist[avatar:getEntityName()] or whitelist[avatar:getUUID()])
 end
 
 setmetatable(lift, {
 	__index = function(_, key)
 		return function(id, ...)
-			local val = { ... }
+			-- Only the viewer can receive Lift requests
+			if client.getViewer():getUUID() ~= getUUID(id) then return end
+
+			local args = { ... }
 
 			-- Unpack vector
-			if type(val[1]):find("Vector") then
-				local vec = { table.remove(val, 1):unpack() }
+			if type(args[1]):find("Vector") then
+				local vec = { table.remove(args, 1):unpack() }
 				for i = 1, #vec do
-					table.insert(val, i, vec[i])
+					table.insert(args, i, vec[i])
 				end
 			end
 
 			-- Set default context
-			if type(val[#val]) ~= "string" then
-				val[#val + 1] = "DEFAULT"
+			if type(args[#args]) ~= "string" then
+				args[#args + 1] = "DEFAULT"
 			end
 
-			pcall(RPC.send, getUUID(id), { lib = "Lift", key = key, val = val })
+			if not gateway then return end
+			pcall(gateway, key, parseJson(toJson(args)))
 		end
 	end,
 })
