@@ -8,7 +8,7 @@ FOX's Lift v2.0
 Allows for interacting with the viewer with a whitelist
 Uses SillyPlugin for its movement functions
 
-Github: https://github.com/Bitslayn/Figura-Libraries/tree/main/Utilities/RPC
+Github: https://github.com/Bitslayn/Figura-Libraries/tree/main/Utilities/Lift
 ]]
 
 --==============================================================================================================================
