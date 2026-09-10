@@ -290,7 +290,7 @@ end
 ---@class FOXLift: FOXLift.MovementFunctions
 local lift = { config = config, internal = internal, events = lift_events }
 
----Returns if a player has LiftRPC
+---Returns if a player has Lift
 ---@param id FOXLift.PlayerID
 ---@return boolean
 function lift.hasLift(id)
@@ -298,7 +298,7 @@ function lift.hasLift(id)
 	return not not (vars and vars.FOXLift)
 end
 
----Returns if a player with LiftRPC is able to be lifted at all
+---Returns if a player with Lift is able to be lifted at all
 ---@param id FOXLift.PlayerID
 ---@return boolean
 function lift.isEnabled(id)
@@ -306,7 +306,7 @@ function lift.isEnabled(id)
 	return vars and vars.FOXLift and vars.FOXLift.config and vars.FOXLift.config.enabled or false
 end
 
----Returns the whitelist table of a player with LiftRPC
+---Returns the whitelist table of a player with Lift
 ---@param id FOXLift.PlayerID
 ---@return table<FOXLift.PlayerID, boolean>?
 function lift.getWhitelist(id)
@@ -314,7 +314,7 @@ function lift.getWhitelist(id)
 	return vars and vars.FOXLift and vars.FOXLift.config and vars.FOXLift.config.whitelist
 end
 
----Returns if a player with LiftRPC has their whitelist table set to blacklist
+---Returns if a player with Lift has their whitelist table set to blacklist
 ---@param id FOXLift.PlayerID
 ---@return boolean
 function lift.usesBlacklist(id)
