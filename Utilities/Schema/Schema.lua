@@ -17,26 +17,37 @@ Github: https://github.com/Bitslayn/Figura-Libraries/tree/main/Utilities/Schema
 ---@class Schema
 local schema = {}
 
----@class Schema.Node<T>
+---@class Schema.Node
 local node = {}
 
 --#ENDREGION --=================================================================================================================
 --#REGION ˚♡ Nodes ♡˚
 --==============================================================================================================================
 
+---@alias Schema.Node.Any
+---| Schema.Node.Table
+---| Schema.Node.Integer
+---| Schema.Node.Enum
+
 ---Uses the provided nodes to build a table of values. Returns this table.
 ---@param key Schema.Node<any>
 ---@param value Schema.Node<any>
 ---@return Schema.Node<table>
 function schema.list(key, value)
-	return setmetatable({ type = "list", key = key, value = value }, { __type = "Schema.Node.Table", __index = node })
+	---@class Schema.Node.Table
+	---@field type "list"
+	local self = { type = "list", key = key, value = value }
+	return setmetatable(self, { __type = "Schema.Node.Table", __index = node })
 end
 
 ---Extracts and returns an integer. A width in bits must be provided.
 ---@param width integer
 ---@return Schema.Node<integer>
 function schema.uint(width)
-	return setmetatable({ type = "uint", width = width }, { __type = "Schema.Node.Integer", __index = node })
+	---@class Schema.Node.Integer
+	---@field type "uint"
+	local self = { type = "uint", width = width }
+	return setmetatable(self, { __type = "Schema.Node.Integer", __index = node })
 end
 
 ---Uses the node's return to index a table. Returns the value from the table.
@@ -45,7 +56,10 @@ end
 ---@param enum table<K, V>
 ---@return Schema.Node<V>
 function schema.enum(key, enum)
-	return setmetatable({ type = "enum", key = key, enum = enum }, { __type = "Schema.Node.Enum", __index = node })
+	---@class Schema.Node.Enum
+	---@field type "enum"
+	local self = { type = "enum", key = key, enum = enum }
+	return setmetatable(self, { __type = "Schema.Node.Enum", __index = node })
 end
 
 ---Extracts and returns a boolean.
@@ -60,16 +74,18 @@ end
 
 -- Lists need to store the length of the table, and each item needs to store its index
 
+---@param self Schema.Node.Any
 ---@param table table
 ---@return integer ...
 function node:encode(table)
-
+	
 end
 
 --#ENDREGION --=================================================================================================================
 --#REGION ˚♡ Decoder ♡˚
 --==============================================================================================================================
 
+---@param self Schema.Node.Any
 ---@param ... integer
 ---@return table
 function node:decode(...)
