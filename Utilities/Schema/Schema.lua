@@ -15,10 +15,10 @@ Github: https://github.com/Bitslayn/Figura-Libraries/tree/main/Utilities/Schema
 --==============================================================================================================================
 
 ---@class Schema
-local schema = {}
+local api_schema = {}
 
 ---@class Schema.Node
-local node = {}
+local api_node = {}
 
 --#ENDREGION --=================================================================================================================
 --#REGION ˚♡ Nodes ♡˚
@@ -33,21 +33,21 @@ local node = {}
 ---@param key Schema.Node<any>
 ---@param value Schema.Node<any>
 ---@return Schema.Node<table>
-function schema.list(key, value)
+function api_schema.list(key, value)
 	---@class Schema.Node.Table
 	---@field type "list"
 	local self = { type = "list", key = key, value = value }
-	return setmetatable(self, { __type = "Schema.Node.Table", __index = node })
+	return setmetatable(self, { __type = "Schema.Node.Table", __index = api_node })
 end
 
 ---Extracts and returns an integer. A width in bits must be provided.
 ---@param width integer
 ---@return Schema.Node<integer>
-function schema.uint(width)
+function api_schema.uint(width)
 	---@class Schema.Node.Integer
 	---@field type "uint"
 	local self = { type = "uint", width = width }
-	return setmetatable(self, { __type = "Schema.Node.Integer", __index = node })
+	return setmetatable(self, { __type = "Schema.Node.Integer", __index = api_node })
 end
 
 ---Uses the node's return to index a table. Returns the value from the table.
@@ -55,17 +55,17 @@ end
 ---@param key Schema.Node<K>
 ---@param enum table<K, V>
 ---@return Schema.Node<V>
-function schema.enum(key, enum)
+function api_schema.enum(key, enum)
 	---@class Schema.Node.Enum
 	---@field type "enum"
 	local self = { type = "enum", key = key, enum = enum }
-	return setmetatable(self, { __type = "Schema.Node.Enum", __index = node })
+	return setmetatable(self, { __type = "Schema.Node.Enum", __index = api_node })
 end
 
 ---Extracts and returns a boolean.
 ---@return Schema.Node<boolean>
-function schema.bool()
-	return schema.enum(schema.uint(1), { [0] = false, [1] = true })
+function api_schema.bool()
+	return api_schema.enum(api_schema.uint(1), { [0] = false, [1] = true })
 end
 
 --#ENDREGION --=================================================================================================================
@@ -77,7 +77,7 @@ end
 ---@param self Schema.Node.Any
 ---@param table table
 ---@return integer ...
-function node:encode(table)
+function api_node:encode(table)
 	
 end
 
@@ -88,10 +88,10 @@ end
 ---@param self Schema.Node.Any
 ---@param ... integer
 ---@return table
-function node:decode(...)
+function api_node:decode(...)
 
 end
 
 --#ENDREGION
 
-return schema
+return api_schema
