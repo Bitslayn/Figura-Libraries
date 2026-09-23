@@ -115,7 +115,11 @@ end
 ---@return integer
 local function extract_int(buffer, pos, width)
 	buffer:setPosition(math.floor(pos / 8))
-	return bit32.extract(buffer:read(), pos % 8, width)
+	local stream = bit32.bor(
+		bit32.rshift(buffer:readIntLE(), pos % 8),
+		bit32.lshift(buffer:readIntLE(), 32 - pos % 8)
+	)
+	return bit32.extract(stream, 0, width)
 end
 
 ---@class Schema.Decode
