@@ -111,15 +111,15 @@ end
 
 ---Extracts an integer from the buffer starting at the binary position and ending at pos + width
 ---@param buffer Buffer
----@param pos integer
----@param width integer
+---@param state Schema.Decode.State
 ---@return integer
-local function extract_int(buffer, pos, width)
-	buffer:setPosition(math.floor(pos / 8))
+local function extract_int(buffer, state, width)
+	buffer:setPosition(math.floor(state.pos / 8))
 	local stream = bit32.bor(
-		bit32.rshift(buffer:readIntLE(), pos % 8),
-		bit32.lshift(buffer:readIntLE(), 32 - pos % 8)
+		bit32.rshift(buffer:readIntLE(), state.pos % 8),
+		bit32.lshift(buffer:readIntLE(), 32 - state.pos % 8)
 	)
+	state.pos = state.pos + width
 	return bit32.extract(stream, 0, width)
 end
 
@@ -129,14 +129,12 @@ local lib_decode = {}
 ---@param node Schema.Node.Table
 ---@param state Schema.Decode.State
 function lib_decode.list(node, state)
-	local has_holes = extract_int(state.buffer, state.pos, 1) == 1
-	state.pos = state.pos + 1
-	local length = extract_int(state.buffer, state.pos, node.key.width)
-	state.pos = state.pos + node.key.width
+	local holes = extract_int(state.buffer, state, 1) == 1
+	local depth = extract_int(state.buffer, state, node.key.width)
 
 	local output = {}
-	for i = 1, length do
-		local key = lib_decode[node.key.type](node.key, state, has_holes and nil or i)
+	for i = 1, depth do
+		local key = lib_decode[node.key.type](node.key, state, holes and nil or i)
 		local val = lib_decode[node.val.type](node.val, state)
 
 		output[key] = val
@@ -151,9 +149,7 @@ end
 ---@return integer
 function lib_decode.uint(node, state, int)
 	if int then return int end
-	int = extract_int(state.buffer, state.pos, node.width)
-	state.pos = state.pos + node.width
-	return int
+	return extract_int(state.buffer, state, node.width)
 end
 
 ---@param node Schema.Node.Enum
@@ -175,11 +171,9 @@ function api_node:decode(...)
 
 	---@class Schema.Decode.State
 	local state = { pos = 0, buffer = buffer }
-
 	local output = lib_decode[self.type](self, state)
 
 	buffer:close()
-
 	return output
 end
 
