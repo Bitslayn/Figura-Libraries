@@ -98,12 +98,117 @@ end
 --#REGION ˚♡ Decoder ♡˚
 --==============================================================================================================================
 
+---Writes the given integers to the buffer in little-endian order
+---@param buffer Buffer
+---@param ... integer
+local function write_to_buffer(buffer, ...)
+	local ints = { ... }
+	for i = 1, #ints do
+		buffer:writeIntLE(ints[i])
+	end
+end
+
+---Extracts an integer from the buffer starting at the binary position and ending at pos + width
+---@param buffer Buffer
+---@param pos integer
+---@param width integer
+---@return integer
+local function extract_int(buffer, pos, width)
+	buffer:setPosition(math.floor(pos / 8))
+	return bit32.extract(buffer:read(), pos % 8, width)
+end
+
+---@class Schema.Decode
+local lib_decode = {}
+
+---@param node Schema.Node.Table
+---@param state Schema.Decode.State
+function lib_decode.list(node, state)
+	-- Extract enums
+
+	---@type Schema.Node.Enum[]
+	local key_enums = {}
+
+	local key_node = node.key
+	while key_node.type == "enum" do
+		table.insert(key_enums, key_node)
+		key_node = key_node.key
+	end
+
+	---@type Schema.Node.Enum[]
+	local value_enums = {}
+
+	local value_node = node.value
+	while value_node.type == "enum" do
+		table.insert(value_enums, value_node)
+		value_node = value_node.key
+	end
+
+	-- Extract bits
+
+	local has_holes = extract_int(state.buffer, state.pos, 1) == 1
+	state.pos = state.pos + 1
+	local length = lib_decode[key_node.type](key_node, state)
+
+	-- Build table
+
+	local output = {}
+	if has_holes then
+
+	else
+		for i = 1, length do
+			local key = i
+			for j = #key_enums, 1, -1 do
+				key = key_enums[j].enum[key]
+			end
+
+			local value = extract_int(state.buffer, state.pos, value_node.width)
+			state.pos = state.pos + value_node.width
+
+			for j = #value_enums, 1, -1 do
+				value = value_enums[j].enum[value]
+			end
+			
+			output[key] = value
+		end
+	end
+
+	return output
+end
+
+---@param node Schema.Node.Integer
+---@param state Schema.Decode.State
+---@return integer
+function lib_decode.uint(node, state)
+	local int = extract_int(state.buffer, state.pos, node.width)
+	state.pos = state.pos + node.width
+	return int
+end
+
+---@param node Schema.Node.Enum
+---@param state Schema.Decode.State
+---@return unknown
+function lib_decode.enum(node, state)
+
+end
+
+---Returns a table representing the given binary data following this schema
 ---@param self Schema.Node.Any
 ---@param ... integer
 ---@return table
 ---@nodiscard
 function api_node:decode(...)
+	local buffer = data:createBuffer()
+	write_to_buffer(buffer, ...)
 
+	---@class Schema.Decode.State
+	local state = { pos = 0, buffer = buffer }
+
+	local output = lib_decode[self.type](self, state)
+
+	buffer:close()
+
+	return output
 end
 
 --#ENDREGION
