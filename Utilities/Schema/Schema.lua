@@ -85,14 +85,42 @@ end
 --#REGION ˚♡ Encoder ♡˚
 --==============================================================================================================================
 
--- Lists need to store the length of the table, and each item needs to store its index
+-- Lists need to store the length of the table, and each item needs to store its index if there are holes
 
+---@class Schema.Encode
+local lib_encode = {}
+
+---@param node Schema.Node.Table
+---@param state Schema.Encode.State
+function lib_encode.list(node, state)
+
+end
+
+---@param node Schema.Node.Integer
+---@param state Schema.Encode.State
+function lib_encode.uint(node, state)
+
+end
+
+---@param node Schema.Node.Enum
+---@param state Schema.Encode.State
+function lib_encode.enum(node, state)
+
+end
+
+---Returns the binary representation of the given table following this schema
 ---@param self Schema.Node.Any
 ---@param table table
 ---@return integer ...
 ---@nodiscard
 function api_node:encode(table)
-	
+	local buffer = data:createBuffer()
+
+	---@class Schema.Encode.State
+	local state = { pos = 0, buffer = buffer }
+	lib_encode[self.type](self, state)
+
+	buffer:close()
 end
 
 --#ENDREGION --=================================================================================================================
