@@ -99,26 +99,36 @@ local lib_encode = {}
 
 ---@param node Schema.Node.Table
 ---@param state Schema.Encode.State
-function lib_encode.list(node, state, table)
-	local output = {}
-	for key, val in pairs(table) do
+---@param list table
+function lib_encode.list(node, state, list)
+	local keys = {}
+	local array = {}
+	for key, val in pairs(list) do
 		key = lib_encode[node.key.type](node.key, state, key)
 		val = lib_encode[node.val.type](node.val, state, val)
 
-		output[key] = val
+		keys[#keys + 1] = key
+		array[key] = val
 	end
 
-	return output
+	-- Distinguishes between table<integer, any> and any[], where a table of any[] does not contain any holes.
+
+	local min, max = math.min(table.unpack(keys)), math.max(table.unpack(keys))
+	local holes = min < 1 or 1 - min + max ~= #keys
+
+	return array
 end
 
 ---@param node Schema.Node.Integer
 ---@param state Schema.Encode.State
+---@param val any
 function lib_encode.uint(node, state, val)
 	return val
 end
 
 ---@param node Schema.Node.Enum
 ---@param state Schema.Encode.State
+---@param val any
 function lib_encode.enum(node, state, val)
 	return lib_encode[node.key.type](node.key, state, node.flip[val])
 end
@@ -156,6 +166,7 @@ end
 ---Extracts an integer from the buffer starting at the binary position and ending at pos + width
 ---@param buffer Buffer
 ---@param state Schema.Decode.State
+---@param width integer
 ---@return integer
 local function extract_int(buffer, state, width)
 	buffer:setPosition(math.floor(state.pos / 8))
