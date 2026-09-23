@@ -201,9 +201,11 @@ local nested_schema =
 
 ### Description
 
-Enums allow you to substitute values with other values. It is recommended not to mix types, but who's stopping you?
+Enums allow you to substitute values with other values. It's important to remember that you're not reading a string or another type from the binary directly. You're still reading an integer, but it's being translated to something else.
 
 ### Parameters
+
+When calling `Schema.enum()`, you provide a table that is used to map one value to another.
 
 - **Key** - The first parameter is the key. It takes a schema such as `uint` or `bool`, but can also take other enums.
 - **Enum** - The second parameter is the enum. This takes a table which returns the value corresponding to the key.
