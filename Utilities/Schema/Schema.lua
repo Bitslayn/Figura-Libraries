@@ -139,11 +139,20 @@ function lib_decode.list(node, state)
 	state.pos = state.pos + key_node.width
 
 	local output = {}
-	for i = 1, length do
-		local key = lib_decode[node.key.type](node.key, state)
-		local val = lib_decode[node.val.type](node.val, state)
+	if has_holes then
+		for i = 1, length do
+			local key = lib_decode[node.key.type](node.key, state)
+			local val = lib_decode[node.val.type](node.val, state)
 
-		output[key] = val
+			output[key] = val
+		end
+	else
+		for i = 1, length do
+			local key = lib_decode[node.key.type](node.key, state, i)
+			local val = lib_decode[node.val.type](node.val, state)
+
+			output[key] = val
+		end
 	end
 
 	return output
@@ -151,18 +160,21 @@ end
 
 ---@param node Schema.Node.Integer
 ---@param state Schema.Decode.State
+---@param int integer?
 ---@return integer
-function lib_decode.uint(node, state)
-	local int = extract_int(state.buffer, state.pos, node.width)
+function lib_decode.uint(node, state, int)
+	if int then return int end
+	int = extract_int(state.buffer, state.pos, node.width)
 	state.pos = state.pos + node.width
 	return int
 end
 
 ---@param node Schema.Node.Enum
 ---@param state Schema.Decode.State
+---@param int integer?
 ---@return unknown
-function lib_decode.enum(node, state)
-	return node.enum[lib_decode[node.key.type](node.key, state)]
+function lib_decode.enum(node, state, int)
+	return node.enum[lib_decode[node.key.type](node.key, state, int)]
 end
 
 ---Returns a table representing the given binary data following this schema
