@@ -233,6 +233,8 @@ local armor_schema = Schema.enum(Schema.uint(4), {
 local visible_schema = Schema.list(armor_schema, boolean_schema)
 ```
 
+---
+
 # Guide
 
 TODO Explain how to use this with pings. Explain the process of creating a schema from a table's type, limitations or what to note when thinking about what types can be represented, and how to encode/decode a table.
