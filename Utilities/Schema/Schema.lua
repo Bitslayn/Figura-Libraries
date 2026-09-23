@@ -28,7 +28,7 @@ local api_node = {}
 ---@class Schema.Node.Table
 ---@field type "list"
 ---@field key Schema.Node.Any
----@field value Schema.Node.Any
+---@field val Schema.Node.Any
 
 ---@class Schema.Node.Integer
 ---@field type "uint"
@@ -45,11 +45,11 @@ local api_node = {}
 
 ---Uses the provided nodes to build a table of values. Returns this table.
 ---@param key Schema.Node<any>
----@param value Schema.Node<any>
+---@param val Schema.Node<any>
 ---@return Schema.Node<table>
 ---@nodiscard
-function api_schema.list(key, value)
-	local self = { type = "list", key = key, value = value }
+function api_schema.list(key, val)
+	local self = { type = "list", key = key, val = val }
 	return setmetatable(self, { __type = "Schema.Node.Table", __index = api_node })
 end
 
@@ -141,9 +141,9 @@ function lib_decode.list(node, state)
 	local output = {}
 	for i = 1, length do
 		local key = lib_decode[node.key.type](node.key, state)
-		local value = lib_decode[node.value.type](node.value, state)
+		local val = lib_decode[node.val.type](node.val, state)
 
-		output[key] = value
+		output[key] = val
 	end
 
 	return output
