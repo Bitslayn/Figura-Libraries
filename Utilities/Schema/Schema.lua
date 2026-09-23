@@ -139,20 +139,11 @@ function lib_decode.list(node, state)
 	state.pos = state.pos + key_node.width
 
 	local output = {}
-	if has_holes then
-		for i = 1, length do
-			local key = lib_decode[node.key.type](node.key, state)
-			local val = lib_decode[node.val.type](node.val, state)
+	for i = 1, length do
+		local key = lib_decode[node.key.type](node.key, state, has_holes and nil or i)
+		local val = lib_decode[node.val.type](node.val, state)
 
-			output[key] = val
-		end
-	else
-		for i = 1, length do
-			local key = lib_decode[node.key.type](node.key, state, i)
-			local val = lib_decode[node.val.type](node.val, state)
-
-			output[key] = val
-		end
+		output[key] = val
 	end
 
 	return output
