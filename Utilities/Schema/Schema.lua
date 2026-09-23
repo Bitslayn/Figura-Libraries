@@ -38,6 +38,7 @@ local api_node = {}
 ---@field type "enum"
 ---@field key Schema.Node.Any
 ---@field enum table
+---@field width integer
 
 --#ENDREGION --=================================================================================================================
 --#REGION ˚♡ Nodes ♡˚
@@ -69,7 +70,7 @@ end
 ---@return Schema.Node<V>
 ---@nodiscard
 function api_schema.enum(key, enum)
-	local self = { type = "enum", key = key, enum = enum }
+	local self = { type = "enum", key = key, enum = enum, width = key.width --[[@as integer?]] or #enum }
 	return setmetatable(self, { __type = "Schema.Node.Enum", __index = api_node })
 end
 
@@ -128,15 +129,10 @@ local lib_decode = {}
 ---@param node Schema.Node.Table
 ---@param state Schema.Decode.State
 function lib_decode.list(node, state)
-	local key_node = node.key
-	while key_node.type == "enum" do
-		key_node = key_node.key
-	end
-
 	local has_holes = extract_int(state.buffer, state.pos, 1) == 1
 	state.pos = state.pos + 1
-	local length = extract_int(state.buffer, state.pos, key_node.width)
-	state.pos = state.pos + key_node.width
+	local length = extract_int(state.buffer, state.pos, node.key.width)
+	state.pos = state.pos + node.key.width
 
 	local output = {}
 	for i = 1, length do
