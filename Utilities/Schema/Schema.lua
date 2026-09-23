@@ -20,22 +20,35 @@ local api_schema = {}
 ---@class Schema.Node
 local api_node = {}
 
---#ENDREGION --=================================================================================================================
---#REGION ˚♡ Nodes ♡˚
---==============================================================================================================================
-
 ---@alias Schema.Node.Any
 ---| Schema.Node.Table
 ---| Schema.Node.Integer
 ---| Schema.Node.Enum
 
+---@class Schema.Node.Table
+---@field type "list"
+---@field key Schema.Node.Any
+---@field value Schema.Node.Any
+
+---@class Schema.Node.Integer
+---@field type "uint"
+---@field width integer
+
+---@class Schema.Node.Enum
+---@field type "enum"
+---@field key Schema.Node.Any
+---@field enum table
+
+--#ENDREGION --=================================================================================================================
+--#REGION ˚♡ Nodes ♡˚
+--==============================================================================================================================
+
 ---Uses the provided nodes to build a table of values. Returns this table.
 ---@param key Schema.Node<any>
 ---@param value Schema.Node<any>
 ---@return Schema.Node<table>
+---@nodiscard
 function api_schema.list(key, value)
-	---@class Schema.Node.Table
-	---@field type "list"
 	local self = { type = "list", key = key, value = value }
 	return setmetatable(self, { __type = "Schema.Node.Table", __index = api_node })
 end
@@ -43,9 +56,8 @@ end
 ---Extracts and returns an integer. A width in bits must be provided.
 ---@param width integer
 ---@return Schema.Node<integer>
+---@nodiscard
 function api_schema.uint(width)
-	---@class Schema.Node.Integer
-	---@field type "uint"
 	local self = { type = "uint", width = width }
 	return setmetatable(self, { __type = "Schema.Node.Integer", __index = api_node })
 end
@@ -55,15 +67,15 @@ end
 ---@param key Schema.Node<K>
 ---@param enum table<K, V>
 ---@return Schema.Node<V>
+---@nodiscard
 function api_schema.enum(key, enum)
-	---@class Schema.Node.Enum
-	---@field type "enum"
 	local self = { type = "enum", key = key, enum = enum }
 	return setmetatable(self, { __type = "Schema.Node.Enum", __index = api_node })
 end
 
 ---Extracts and returns a boolean.
 ---@return Schema.Node<boolean>
+---@nodiscard
 function api_schema.bool()
 	return api_schema.enum(api_schema.uint(1), { [0] = false, [1] = true })
 end
@@ -77,6 +89,7 @@ end
 ---@param self Schema.Node.Any
 ---@param table table
 ---@return integer ...
+---@nodiscard
 function api_node:encode(table)
 	
 end
@@ -88,6 +101,7 @@ end
 ---@param self Schema.Node.Any
 ---@param ... integer
 ---@return table
+---@nodiscard
 function api_node:decode(...)
 
 end
