@@ -168,7 +168,7 @@ Lists represent tables. During compression, lists have the ability to omit the k
 When calling `Schema.list()`, you must provide two parameters of either a `uint` or an `enum`. Additionally, you can provide a `list` as the second parameter which allows for nesting tables.
 
 - **Key** - The first parameter is the key. It determines how many indices can fit in this table. For example, when you provide a `Schema.uint()` and give the width, you're saying the table can have width ^ 2 - 1 indices.
-- **Val** - The second parameter is the value. This is pretty self-explanatory.
+- **Value** - The second parameter is the value. This is pretty self-explanatory.
 
 ### Example
 
@@ -197,7 +197,7 @@ local nested_schema =
 
 ---
 
-## Enums : `Schema.enum()`
+## Enums : `Schema.enum(key, enum)`
 
 ### Description
 
