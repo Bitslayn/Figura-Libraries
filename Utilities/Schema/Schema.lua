@@ -38,6 +38,7 @@ local api_node = {}
 ---@field type "enum"
 ---@field key Schema.Node.Any
 ---@field enum table
+---@field flip table
 ---@field width integer
 
 --#ENDREGION --=================================================================================================================
@@ -70,7 +71,13 @@ end
 ---@return Schema.Node<V>
 ---@nodiscard
 function api_schema.enum(key, enum)
-	local self = { type = "enum", key = key, enum = enum, width = key.width --[[@as integer?]] or #enum }
+	local flip = {}
+	for k, v in next, enum do
+		flip[v] = k
+	end
+
+	---@diagnostic disable-next-line: undefined-field
+	local self = { type = "enum", key = key, enum = enum, flip = flip, width = key.width }
 	return setmetatable(self, { __type = "Schema.Node.Enum", __index = api_node })
 end
 
@@ -92,20 +99,28 @@ local lib_encode = {}
 
 ---@param node Schema.Node.Table
 ---@param state Schema.Encode.State
-function lib_encode.list(node, state)
+function lib_encode.list(node, state, table)
+	local output = {}
+	for key, val in pairs(table) do
+		key = lib_encode[node.key.type](node.key, state, key)
+		val = lib_encode[node.val.type](node.val, state, val)
 
+		output[key] = val
+	end
+
+	return output
 end
 
 ---@param node Schema.Node.Integer
 ---@param state Schema.Encode.State
-function lib_encode.uint(node, state)
-
+function lib_encode.uint(node, state, val)
+	return val
 end
 
 ---@param node Schema.Node.Enum
 ---@param state Schema.Encode.State
-function lib_encode.enum(node, state)
-
+function lib_encode.enum(node, state, val)
+	return lib_encode[node.key.type](node.key, state, node.flip[val])
 end
 
 ---Returns the binary representation of the given table following this schema
@@ -118,9 +133,10 @@ function api_node:encode(table)
 
 	---@class Schema.Encode.State
 	local state = { pos = 0, buffer = buffer }
-	lib_encode[self.type](self, state)
+	local output = lib_encode[self.type](self, state, table)
 
 	buffer:close()
+	return output
 end
 
 --#ENDREGION --=================================================================================================================
