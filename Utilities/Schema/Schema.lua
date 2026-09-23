@@ -124,53 +124,22 @@ local lib_decode = {}
 ---@param node Schema.Node.Table
 ---@param state Schema.Decode.State
 function lib_decode.list(node, state)
-	-- Extract enums
-
-	---@type Schema.Node.Enum[]
-	local key_enums = {}
-
 	local key_node = node.key
 	while key_node.type == "enum" do
-		table.insert(key_enums, key_node)
 		key_node = key_node.key
 	end
 
-	---@type Schema.Node.Enum[]
-	local value_enums = {}
-
-	local value_node = node.value
-	while value_node.type == "enum" do
-		table.insert(value_enums, value_node)
-		value_node = value_node.key
-	end
-
-	-- Extract bits
-
 	local has_holes = extract_int(state.buffer, state.pos, 1) == 1
 	state.pos = state.pos + 1
-	local length = lib_decode[key_node.type](key_node, state)
-
-	-- Build table
+	local length = extract_int(state.buffer, state.pos, key_node.width)
+	state.pos = state.pos + key_node.width
 
 	local output = {}
-	if has_holes then
+	for i = 1, length do
+		local key = lib_decode[node.key.type](node.key, state)
+		local value = lib_decode[node.value.type](node.value, state)
 
-	else
-		for i = 1, length do
-			local key = i
-			for j = #key_enums, 1, -1 do
-				key = key_enums[j].enum[key]
-			end
-
-			local value = extract_int(state.buffer, state.pos, value_node.width)
-			state.pos = state.pos + value_node.width
-
-			for j = #value_enums, 1, -1 do
-				value = value_enums[j].enum[value]
-			end
-			
-			output[key] = value
-		end
+		output[key] = value
 	end
 
 	return output
@@ -189,7 +158,7 @@ end
 ---@param state Schema.Decode.State
 ---@return unknown
 function lib_decode.enum(node, state)
-
+	return node.enum[lib_decode[node.key.type](node.key, state)]
 end
 
 ---Returns a table representing the given binary data following this schema
