@@ -89,6 +89,67 @@ function api_schema.bool()
 end
 
 --#ENDREGION --=================================================================================================================
+--#REGION ˚♡ Binary ♡˚
+--==============================================================================================================================
+
+---Reads up to 32 bits from the integer array
+---@param ints integer[]
+---@param pos integer
+---@param wid integer
+---@return integer
+---@nodiscard
+local function read(ints, pos, wid)
+	local byte = math.floor(pos / 32) + 1
+	local stream = bit32.bor(
+		bit32.rshift(ints[byte] or 0, pos % 32),
+		bit32.lshift(ints[byte + 1] or 0, 32 - pos % 32)
+	)
+	return bit32.extract(stream, 0, wid)
+end
+
+---Writes up to 32 bits to the integer array
+---@param ints integer[]
+---@param pos integer
+---@param wid integer
+---@param val integer
+local function write(ints, pos, wid, val)
+	local offset = pos % 32
+	local byte = math.floor(pos / 32) + 1
+
+	if offset + wid > 32 then
+		local lwid = 32 - offset
+		local rwid = wid - lwid
+		local lval = bit32.extract(val, 0, lwid)
+		local rval = bit32.extract(val, lwid, rwid)
+
+		ints[byte] = bit32.replace(ints[byte] or 0, lval, offset, lwid)
+		ints[byte + 1] = bit32.replace(ints[byte + 1] or 0, rval, 0, rwid)
+	else
+		ints[byte] = bit32.replace(ints[byte] or 0, val, offset, wid)
+	end
+end
+
+---Signs all integers in the array
+---
+---Pinging unsigned integers could cost an additional 4 bytes!
+---@param ints integer[]
+local function sign(ints)
+	local buffer = data:createBuffer()
+
+	for i = 1, #ints do
+		buffer:writeInt(ints[i])
+	end
+
+	buffer:setPosition(0)
+
+	for i = 1, #ints do
+		ints[i] = buffer:readInt()
+	end
+
+	buffer:close()
+end
+
+--#ENDREGION --=================================================================================================================
 --#REGION ˚♡ Encoder ♡˚
 --==============================================================================================================================
 
