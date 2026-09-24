@@ -214,39 +214,16 @@ end
 --#REGION ˚♡ Decoder ♡˚
 --==============================================================================================================================
 
----Writes the given integers to the buffer in little-endian order
----@param buffer Buffer
----@param ... integer
-local function write_to_buffer(buffer, ...)
-	local ints = { ... }
-	for i = 1, #ints do
-		buffer:writeIntLE(ints[i])
-	end
-end
-
----Extracts an integer from the buffer starting at the binary position and ending at pos + width
----@param buffer Buffer
----@param state Schema.Decode.State
----@param width integer
----@return integer
-local function extract_int(buffer, state, width)
-	buffer:setPosition(math.floor(state.pos / 8))
-	local stream = bit32.bor(
-		bit32.rshift(buffer:readIntLE(), state.pos % 8),
-		bit32.lshift(buffer:readIntLE(), 32 - state.pos % 8)
-	)
-	state.pos = state.pos + width
-	return bit32.extract(stream, 0, width)
-end
-
 ---@class Schema.Decode
 local lib_decode = {}
 
 ---@param node Schema.Node.Table
 ---@param state Schema.Decode.State
 function lib_decode.list(node, state)
-	local holes = extract_int(state.buffer, state, 1) == 1
-	local depth = extract_int(state.buffer, state, node.key.width)
+	local holes = read(state.ints, state.pos, 1) == 1
+	state.pos = state.pos + 1
+	local depth = read(state.ints, state.pos, node.key.wid)
+	state.pos = state.pos + node.key.wid
 
 	local output = {}
 	for i = 1, depth do
@@ -265,7 +242,9 @@ end
 ---@return integer
 function lib_decode.uint(node, state, int)
 	if int then return int end
-	return extract_int(state.buffer, state, node.width)
+	int = read(state.ints, state.pos, node.wid)
+	state.pos = state.pos + node.wid
+	return int
 end
 
 ---@param node Schema.Node.Enum
@@ -282,14 +261,10 @@ end
 ---@return table
 ---@nodiscard
 function api_node:decode(...)
-	local buffer = data:createBuffer()
-	write_to_buffer(buffer, ...)
-
 	---@class Schema.Decode.State
-	local state = { pos = 0, buffer = buffer }
+	local state = { pos = 0, ints = { ... } }
 	local output = lib_decode[self.type](self, state)
 
-	buffer:close()
 	return output
 end
 
