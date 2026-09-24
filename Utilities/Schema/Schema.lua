@@ -174,13 +174,14 @@ function lib_encode.list(node, state, tbl)
 	-- Distinguishes between table<integer, any> and any[], where a table of any[] does not contain any holes.
 
 	local min, max = math.min(table.unpack(keys)), math.max(table.unpack(keys))
-	local holes = min < 1 or 1 - min + max ~= #keys
+	local limit = math.min(#keys, 2 ^ node.key.wid - 1)
+	local holes = min < 1 or 1 - min + max ~= limit
 
 	write(state.ints, state.pos, 1, holes and 1 or 0)
-	write(state.ints, state.pos + 1, node.key.wid, #keys)
+	write(state.ints, state.pos + 1, node.key.wid, limit)
 	state.pos = state.pos + node.key.wid + 1
 
-	for i = 1, #keys do
+	for i = 1, limit do
 		if holes then
 			write(state.ints, state.pos, node.key.wid, keys[i])
 			state.pos = state.pos + node.key.wid
