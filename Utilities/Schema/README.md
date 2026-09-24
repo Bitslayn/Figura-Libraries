@@ -55,7 +55,7 @@ hxxxxxbb bbbbbbbb bbbbbbbb bbbbbbbb
 
 local states = {}
 for i = 1, 26 do
-	state[i] = true
+	states[i] = true
 end
 
 ping(states) -- 81 bytes
@@ -104,7 +104,7 @@ hxxxxx + (iiiiib x 26) + ----
 
 local states = {}
 for i = 1, 26 do
-	state[i] = true
+	states[i] = true
 end
 
 ping(states) -- 81 bytes
