@@ -153,7 +153,7 @@ end
 --#REGION ˚♡ Encoder ♡˚
 --==============================================================================================================================
 
--- Lists need to store the length of the table, and each item needs to store its index if there are holes
+-- TODO Pending rewrite
 
 ---@class FOXSchema.Encode
 local lib_encode = {}
@@ -174,9 +174,16 @@ function lib_encode.list(node, state, tbl)
 
 	-- Distinguishes between table<integer, any> and any[], where a table of any[] does not contain any holes.
 
-	local min, max = math.min(table.unpack(keys)), math.max(table.unpack(keys))
+	local max = math.max(0, table.unpack(keys))
+	local min = math.min(max, table.unpack(keys))
 	local limit = math.min(#keys, 2 ^ node.key.wid - 1)
-	local holes = min < 1 or 1 - min + max ~= limit
+
+	local holes
+	if node.key.enum then
+		holes = node.key.enum[0] or #node.key.enum > limit
+	else
+		holes = min < 1 or 1 - min + max ~= limit
+	end
 
 	write(state.ints, state.pos, 1, holes and 1 or 0)
 	write(state.ints, state.pos + 1, node.key.wid, limit)

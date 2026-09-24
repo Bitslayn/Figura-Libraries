@@ -1,6 +1,6 @@
 # Introduction
 
-Schema allows you to encode and decode tables into binary. This is useful for when you want to ping a table but don't want to waste bytes doing so.
+Schema allows you to encode and decode tables into binary. You create a schema based on the table you want to convert, and then call the encoder/decoder to run the conversion.
 
 So who is this for? This script is for anyone who's wanting to ping structured tables of data without overrunning resource limits. This can also be used for general data compression.
 
@@ -238,3 +238,27 @@ local visible_schema = Schema.list(armor_schema, boolean_schema)
 # Guide
 
 TODO Explain how to use this with pings. Explain the process of creating a schema from a table's type, limitations or what to note when thinking about what types can be represented, and how to encode/decode a table.
+
+```lua
+local Schema = require("Schema")
+
+---@alias Outfit table<Outfit.ClothesTypes, Outfit.ClothesProps[]>
+---@alias Outfit.ClothesTypes "hats"|"shirts"|"gloves"|"pants"|"socks"|"shoes"
+---@class Outfit.ClothesProps
+---@field id integer
+---@field color integer
+
+local clothes_types = Schema.enum(Schema.uint(3), { "hats", "shirts", "gloves", "pants", "socks", "shoes" })
+local clothes_props = Schema.enum(Schema.uint(2), { "id", "color" })
+
+local clothes_schema = Schema.list(clothes_types, Schema.list(Schema.uint(2), Schema.list(clothes_props, Schema.uint(8))))
+
+---@type Outfit
+local outfit = { shirts = { { id = 0, color = 0 } } }
+
+function pings.apply_outfit(...)
+	outfit = clothes_schema:decode(...)
+end
+
+pings.apply_outfit(clothes_schema:encode(outfit))
+```
