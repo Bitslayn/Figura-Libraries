@@ -163,13 +163,13 @@ local lib_encode = {}
 ---@param tbl table
 function lib_encode.list(node, state, tbl)
 	local keys = {}
-	local array = {}
+	local vals = {}
 	for key, val in pairs(tbl) do
 		key = lib_encode[node.key.type](node.key, state, key)
 		val = lib_encode[node.val.type](node.val, state, val)
 
 		keys[#keys + 1] = key
-		array[key] = val
+		vals[key] = val
 	end
 
 	-- Distinguishes between table<integer, any> and any[], where a table of any[] does not contain any holes.
@@ -193,19 +193,21 @@ function lib_encode.list(node, state, tbl)
 		end
 	end
 
-	return array
+	return vals
 end
 
 ---@param node Schema.Node.Integer
 ---@param state Schema.Encode.State
----@param val any
+---@param val integer
+---@return integer
 function lib_encode.uint(node, state, val)
 	return val
 end
 
 ---@param node Schema.Node.Enum
 ---@param state Schema.Encode.State
----@param val any
+---@param val unknown
+---@return unknown
 function lib_encode.enum(node, state, val)
 	return lib_encode[node.key.type](node.key, state, node.flip[val])
 end
@@ -252,21 +254,21 @@ end
 
 ---@param node Schema.Node.Integer
 ---@param state Schema.Decode.State
----@param int integer?
+---@param val integer?
 ---@return integer
-function lib_decode.uint(node, state, int)
-	if int then return int end
-	int = read(state.ints, state.pos, node.wid)
+function lib_decode.uint(node, state, val)
+	if val then return val end
+	val = read(state.ints, state.pos, node.wid)
 	state.pos = state.pos + node.wid
-	return int
+	return val
 end
 
 ---@param node Schema.Node.Enum
 ---@param state Schema.Decode.State
----@param int integer?
+---@param val unknown
 ---@return unknown
-function lib_decode.enum(node, state, int)
-	return node.enum[lib_decode[node.key.type](node.key, state, int)]
+function lib_decode.enum(node, state, val)
+	return node.enum[lib_decode[node.key.type](node.key, state, val)]
 end
 
 ---Returns a table representing the given binary data following this schema
