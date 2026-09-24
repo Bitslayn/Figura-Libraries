@@ -32,14 +32,14 @@ local api_node = {}
 
 ---@class Schema.Node.Integer
 ---@field type "uint"
----@field width integer
+---@field wid integer
 
 ---@class Schema.Node.Enum
 ---@field type "enum"
 ---@field key Schema.Node.Any
 ---@field enum table
 ---@field flip table
----@field width integer
+---@field wid integer
 
 --#ENDREGION --=================================================================================================================
 --#REGION ˚♡ Nodes ♡˚
@@ -56,11 +56,11 @@ function api_schema.list(key, val)
 end
 
 ---Extracts and returns an integer. A width in bits must be provided.
----@param width integer
+---@param wid integer
 ---@return Schema.Node<integer>
 ---@nodiscard
-function api_schema.uint(width)
-	local self = { type = "uint", width = width }
+function api_schema.uint(wid)
+	local self = { type = "uint", wid = wid }
 	return setmetatable(self, { __type = "Schema.Node.Integer", __index = api_node })
 end
 
@@ -77,7 +77,7 @@ function api_schema.enum(key, enum)
 	end
 
 	---@diagnostic disable-next-line: undefined-field
-	local self = { type = "enum", key = key, enum = enum, flip = flip, width = key.width }
+	local self = { type = "enum", key = key, enum = enum, flip = flip, wid = key.wid }
 	return setmetatable(self, { __type = "Schema.Node.Enum", __index = api_node })
 end
 
@@ -160,11 +160,11 @@ local lib_encode = {}
 
 ---@param node Schema.Node.Table
 ---@param state Schema.Encode.State
----@param list table
-function lib_encode.list(node, state, list)
+---@param tbl table
+function lib_encode.list(node, state, tbl)
 	local keys = {}
 	local array = {}
-	for key, val in pairs(list) do
+	for key, val in pairs(tbl) do
 		key = lib_encode[node.key.type](node.key, state, key)
 		val = lib_encode[node.val.type](node.val, state, val)
 
@@ -176,6 +176,22 @@ function lib_encode.list(node, state, list)
 
 	local min, max = math.min(table.unpack(keys)), math.max(table.unpack(keys))
 	local holes = min < 1 or 1 - min + max ~= #keys
+
+	write(state.ints, state.pos, 1, holes and 1 or 0)
+	state.pos = state.pos + 1
+	write(state.ints, state.pos, node.key.wid, #keys)
+	state.pos = state.pos + node.key.wid
+
+	for i = 1, #keys do
+		if holes then
+			write(state.ints, state.pos, node.key.wid, i)
+			state.pos = state.pos + node.key.wid
+		end
+		if node.type ~= "list" then
+			write(state.ints, state.pos, node.val.wid, keys[i])
+			state.pos = state.pos + node.val.wid
+		end
+	end
 
 	return array
 end
@@ -196,18 +212,16 @@ end
 
 ---Returns the binary representation of the given table following this schema
 ---@param self Schema.Node.Any
----@param table table
+---@param tbl table
 ---@return integer ...
 ---@nodiscard
-function api_node:encode(table)
-	local buffer = data:createBuffer()
-
+function api_node:encode(tbl)
 	---@class Schema.Encode.State
-	local state = { pos = 0, buffer = buffer }
-	local output = lib_encode[self.type](self, state, table)
+	local state = { pos = 0, ints = {} }
+	lib_encode[self.type](self, state, tbl)
 
-	buffer:close()
-	return output
+	sign(state.ints)
+	return table.unpack(state.ints)
 end
 
 --#ENDREGION --=================================================================================================================
