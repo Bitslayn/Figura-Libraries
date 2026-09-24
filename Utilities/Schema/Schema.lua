@@ -14,29 +14,29 @@ Github: https://github.com/Bitslayn/Figura-Libraries/tree/main/Utilities/Schema
 --#REGION ˚♡ Classes ♡˚
 --==============================================================================================================================
 
----@class Schema
+---@class FOXSchema
 local api_schema = {}
 
----@class Schema.Node
+---@class FOXSchema.Node
 local api_node = {}
 
----@alias Schema.Node.Any
----| Schema.Node.Table
----| Schema.Node.Integer
----| Schema.Node.Enum
+---@alias FOXSchema.Node.Any
+---| FOXSchema.Node.Table
+---| FOXSchema.Node.Integer
+---| FOXSchema.Node.Enum
 
----@class Schema.Node.Table
+---@class FOXSchema.Node.Table
 ---@field type "list"
----@field key Schema.Node.Any
----@field val Schema.Node.Any
+---@field key FOXSchema.Node.Any
+---@field val FOXSchema.Node.Any
 
----@class Schema.Node.Integer
+---@class FOXSchema.Node.Integer
 ---@field type "uint"
 ---@field wid integer
 
----@class Schema.Node.Enum
+---@class FOXSchema.Node.Enum
 ---@field type "enum"
----@field key Schema.Node.Any
+---@field key FOXSchema.Node.Any
 ---@field enum table
 ---@field flip table
 ---@field wid integer
@@ -46,9 +46,9 @@ local api_node = {}
 --==============================================================================================================================
 
 ---Uses the provided nodes to build a table of values. Returns this table.
----@param key Schema.Node<any>
----@param val Schema.Node<any>
----@return Schema.Node<table>
+---@param key FOXSchema.Node<any>
+---@param val FOXSchema.Node<any>
+---@return FOXSchema.Node<table>
 ---@nodiscard
 function api_schema.list(key, val)
 	local self = { type = "list", key = key, val = val }
@@ -57,7 +57,7 @@ end
 
 ---Extracts and returns an integer. A width in bits must be provided.
 ---@param wid integer
----@return Schema.Node<integer>
+---@return FOXSchema.Node<integer>
 ---@nodiscard
 function api_schema.uint(wid)
 	local self = { type = "uint", wid = wid }
@@ -66,9 +66,9 @@ end
 
 ---Uses the node's return to index a table. Returns the value from the table.
 ---@generic K, V
----@param key Schema.Node<K>
+---@param key FOXSchema.Node<K>
 ---@param enum table<K, V>
----@return Schema.Node<V>
+---@return FOXSchema.Node<V>
 ---@nodiscard
 function api_schema.enum(key, enum)
 	local flip = {}
@@ -82,7 +82,7 @@ function api_schema.enum(key, enum)
 end
 
 ---Extracts and returns a boolean.
----@return Schema.Node<boolean>
+---@return FOXSchema.Node<boolean>
 ---@nodiscard
 function api_schema.bool()
 	return api_schema.enum(api_schema.uint(1), { [0] = false, [1] = true })
@@ -155,11 +155,11 @@ end
 
 -- Lists need to store the length of the table, and each item needs to store its index if there are holes
 
----@class Schema.Encode
+---@class FOXSchema.Encode
 local lib_encode = {}
 
----@param node Schema.Node.Table
----@param state Schema.Encode.State
+---@param node FOXSchema.Node.Table
+---@param state FOXSchema.Encode.State
 ---@param tbl table
 function lib_encode.list(node, state, tbl)
 	local keys = {}
@@ -195,16 +195,16 @@ function lib_encode.list(node, state, tbl)
 	end
 end
 
----@param node Schema.Node.Integer
----@param state Schema.Encode.State
+---@param node FOXSchema.Node.Integer
+---@param state FOXSchema.Encode.State
 ---@param val integer
 ---@return integer
 function lib_encode.uint(node, state, val)
 	return val
 end
 
----@param node Schema.Node.Enum
----@param state Schema.Encode.State
+---@param node FOXSchema.Node.Enum
+---@param state FOXSchema.Encode.State
 ---@param val unknown
 ---@return unknown
 function lib_encode.enum(node, state, val)
@@ -212,12 +212,12 @@ function lib_encode.enum(node, state, val)
 end
 
 ---Returns the binary representation of the given table following this schema
----@param self Schema.Node.Any
+---@param self FOXSchema.Node.Any
 ---@param tbl table
 ---@return integer ...
 ---@nodiscard
 function api_node:encode(tbl)
-	---@class Schema.Encode.State
+	---@class FOXSchema.Encode.State
 	local state = { pos = 0, ints = {} }
 	lib_encode[self.type](self, state, tbl)
 
@@ -229,11 +229,11 @@ end
 --#REGION ˚♡ Decoder ♡˚
 --==============================================================================================================================
 
----@class Schema.Decode
+---@class FOXSchema.Decode
 local lib_decode = {}
 
----@param node Schema.Node.Table
----@param state Schema.Decode.State
+---@param node FOXSchema.Node.Table
+---@param state FOXSchema.Decode.State
 function lib_decode.list(node, state)
 	local holes = read(state.ints, state.pos, 1) == 1
 	state.pos = state.pos + 1
@@ -251,8 +251,8 @@ function lib_decode.list(node, state)
 	return output
 end
 
----@param node Schema.Node.Integer
----@param state Schema.Decode.State
+---@param node FOXSchema.Node.Integer
+---@param state FOXSchema.Decode.State
 ---@param val integer?
 ---@return integer
 function lib_decode.uint(node, state, val)
@@ -262,8 +262,8 @@ function lib_decode.uint(node, state, val)
 	return val
 end
 
----@param node Schema.Node.Enum
----@param state Schema.Decode.State
+---@param node FOXSchema.Node.Enum
+---@param state FOXSchema.Decode.State
 ---@param val unknown
 ---@return unknown
 function lib_decode.enum(node, state, val)
@@ -271,12 +271,12 @@ function lib_decode.enum(node, state, val)
 end
 
 ---Returns a table representing the given binary data following this schema
----@param self Schema.Node.Any
+---@param self FOXSchema.Node.Any
 ---@param ... integer
 ---@return table
 ---@nodiscard
 function api_node:decode(...)
-	---@class Schema.Decode.State
+	---@class FOXSchema.Decode.State
 	local state = { pos = 0, ints = { ... } }
 	local output = lib_decode[self.type](self, state)
 
