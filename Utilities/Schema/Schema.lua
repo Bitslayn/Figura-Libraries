@@ -170,6 +170,7 @@ function lib_encode.list(node, state, tbl)
 		keys[#keys + 1] = key
 		vals[key] = val
 	end
+	table.sort(keys)
 
 	-- Distinguishes between table<integer, any> and any[], where a table of any[] does not contain any holes.
 
