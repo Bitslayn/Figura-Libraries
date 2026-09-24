@@ -1,19 +1,19 @@
 # Introduction
 
-Schema allows you to encode and decode tables into binary. You create a schema based on the table you want to convert, and then call the encoder/decoder to run the conversion.
+FOXSchema allows you to encode and decode tables into binary. You create a schema based on the table you want to convert, and then call the encoder/decoder to run the conversion.
 
 So who is this for? This script is for anyone who's wanting to ping structured tables of data without overrunning resource limits. This can also be used for general data compression.
 
 # Benchmarks
 
-Schema takes advantage of integers for pinging data. A single integer could cost 2 - 5 bytes. In contrast, pinging Figura tables cost 3 bytes per table entry, plus an additional 3 bytes.
+FOXSchema takes advantage of integers for pinging data. A single integer could cost 2 - 5 bytes. In contrast, pinging Figura tables cost 3 bytes per table entry, plus an additional 3 bytes.
 
-For these benchmarks, I will be pinging a table of booleans. Schema is capable of compressing more complex types, but a table of booleans acts as a good baseline.
+For these benchmarks, I will be pinging a table of booleans. FOXSchema is capable of compressing more complex types, but a table of booleans acts as a good baseline.
 
 | Type                  | Bools | Bytes    |
 | --------------------- | ----- | -------- |
-| `...integer` (Schema) | 4     | 2 bytes  |
-| `...integer` (Schema) | 26    | 5 bytes  |
+| `...integer` (FOXSchema) | 4     | 2 bytes  |
+| `...integer` (FOXSchema) | 26    | 5 bytes  |
 | `boolean[]`           | 4     | 15 bytes |
 | `boolean[]`           | 26    | 81 bytes |
 
@@ -98,7 +98,7 @@ hxxxxx + (iiiiib x 26) + ----
 
 -- We know from the previous test that Figura pings tables with keys
 -- regardless given the unchanged byte count, so we'll just enable the
--- flag to read keys with Schema.
+-- flag to read keys with FOXSchema.
 
 -- 3.375x smaller
 
@@ -119,7 +119,7 @@ This library is complex and requires that you read everything so you know what y
 
 Each example expects that you've read and fully understood the last. If you don't understand something, or you have any questions or comments, please feel free to reach out in the thread.
 
-## Integers : `Schema.uint(width)`
+## Integers : `FOXSchema.uint(width)`
 
 ### Description
 
@@ -140,7 +140,7 @@ local integer_schema = Schema.uint(4)
 
 ---
 
-## Booleans : `Schema.bool()`
+## Booleans : `FOXSchema.bool()`
 
 ### Description
 
@@ -157,7 +157,7 @@ local boolean_schema = Schema.bool()
 
 ---
 
-## Lists : `Schema.list(key, value)`
+## Lists : `FOXSchema.list(key, value)`
 
 ### Description
 
@@ -165,9 +165,9 @@ Lists represent tables. During compression, lists have the ability to omit the k
 
 ### Parameters
 
-When calling `Schema.list()`, you must provide two parameters of either a `uint` or an `enum`. Additionally, you can provide a `list` as the second parameter which allows for nesting tables.
+When calling `FOXSchema.list()`, you must provide two parameters of either a `uint` or an `enum`. Additionally, you can provide a `list` as the second parameter which allows for nesting tables.
 
-- **Key** - The first parameter is the key. It determines how many indices can fit in this table. For example, when you provide a `Schema.uint()` and give the width, you're saying the table can have width ^ 2 - 1 indices.
+- **Key** - The first parameter is the key. It determines how many indices can fit in this table. For example, when you provide a `FOXSchema.uint()` and give the width, you're saying the table can have width ^ 2 - 1 indices.
 - **Value** - The second parameter is the value. This is pretty self-explanatory.
 
 ### Example
@@ -197,7 +197,7 @@ local nested_schema =
 
 ---
 
-## Enums : `Schema.enum(key, enum)`
+## Enums : `FOXSchema.enum(key, enum)`
 
 ### Description
 
@@ -205,7 +205,7 @@ Enums allow you to substitute values with other values. It's important to rememb
 
 ### Parameters
 
-When calling `Schema.enum()`, you provide a table that is used to map one value to another.
+When calling `FOXSchema.enum()`, you provide a table that is used to map one value to another.
 
 - **Key** - The first parameter is the key. It takes a schema such as `uint` or `bool`, but can also take other enums.
 - **Enum** - The second parameter is the enum. This takes a table which returns the value corresponding to the key.
@@ -215,7 +215,7 @@ When calling `Schema.enum()`, you provide a table that is used to map one value 
 ```lua
 local Schema = require("Schema")
 
--- This is the same as `Schema.bool()`
+-- This is the same as `FOXSchema.bool()`
 local boolean_schema = Schema.enum(Schema.uint(1), {
 	[0] = false,
 	[1] = true,
@@ -237,7 +237,43 @@ local visible_schema = Schema.list(armor_schema, boolean_schema)
 
 # Guide
 
-TODO Explain how to use this with pings. Explain the process of creating a schema from a table's type, limitations or what to note when thinking about what types can be represented, and how to encode/decode a table.
+## Quick Start
+
+Create your schema given your type specifications.
+
+```lua
+local Schema = require("Schema")
+
+local state_schema =
+	-- boolean[]
+	Schema.list(Schema.uint(3),
+		-- boolean
+		Schema.bool()
+	)
+```
+
+Any schema can be used to encode and decode values as long as the type being provided is supported by the schema.
+
+**There is currently no way to encode schemas other than lists but that is planned!!!**
+
+```lua
+print(state_schema:encode({ true })) --> 18
+print(state_schema:decode(18)) --> { true }
+```
+
+Using this with pings, you can ping the encoded data then decode that data in the ping.
+
+```lua
+function pings.state(...)
+	print(state_schema:decode(...))
+end
+
+pings.state(state_schema:encode({ true }))
+```
+
+## Outfits
+
+This extended example uses enums to name keys for an outfit system.
 
 ```lua
 local Schema = require("Schema")
@@ -251,14 +287,32 @@ local Schema = require("Schema")
 local clothes_types = Schema.enum(Schema.uint(3), { "hats", "shirts", "gloves", "pants", "socks", "shoes" })
 local clothes_props = Schema.enum(Schema.uint(2), { "id", "color" })
 
-local clothes_schema = Schema.list(clothes_types, Schema.list(Schema.uint(2), Schema.list(clothes_props, Schema.uint(8))))
+local clothes_schema =
+	-- Outfit
+	Schema.list(clothes_types,
+		-- Outfit.ClothesProps[]
+		Schema.list(Schema.uint(2),
+			-- Outfit.ClothesProps
+			Schema.list(clothes_props, Schema.uint(8))
+		)
+	)
+```
+
+```lua
+-- Create ping function and default outfit
 
 ---@type Outfit
 local outfit = { shirts = { { id = 0, color = 0 } } }
 
+---@param ... integer
 function pings.apply_outfit(...)
 	outfit = clothes_schema:decode(...)
 end
 
-pings.apply_outfit(clothes_schema:encode(outfit))
+-- Call ping function to apply new outfit
+
+---@type Outfit
+local new_outfit = { hats = { { id = 0, color = 0 } }, shirts = { { id = 0, color = 0 } } }
+
+pings.apply_outfit(clothes_schema:encode(new_outfit))
 ```
