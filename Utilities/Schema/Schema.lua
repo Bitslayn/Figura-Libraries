@@ -166,7 +166,6 @@ function lib_encode.list(node, state, tbl)
 	local vals = {}
 	for key, val in pairs(tbl) do
 		key = lib_encode[node.key.type](node.key, state, key)
-		val = lib_encode[node.val.type](node.val, state, val)
 
 		keys[#keys + 1] = key
 		vals[key] = val
@@ -178,22 +177,20 @@ function lib_encode.list(node, state, tbl)
 	local holes = min < 1 or 1 - min + max ~= #keys
 
 	write(state.ints, state.pos, 1, holes and 1 or 0)
-	state.pos = state.pos + 1
-	write(state.ints, state.pos, node.key.wid, #keys)
-	state.pos = state.pos + node.key.wid
+	write(state.ints, state.pos + 1, node.key.wid, #keys)
+	state.pos = state.pos + node.key.wid + 1
 
 	for i = 1, #keys do
 		if holes then
-			write(state.ints, state.pos, node.key.wid, i)
+			write(state.ints, state.pos, node.key.wid, keys[i])
 			state.pos = state.pos + node.key.wid
 		end
-		if node.type ~= "list" then
-			write(state.ints, state.pos, node.val.wid, keys[i])
+		local val = lib_encode[node.val.type](node.val, state, vals[keys[i]])
+		if val then
+			write(state.ints, state.pos, node.val.wid, val)
 			state.pos = state.pos + node.val.wid
 		end
 	end
-
-	return vals
 end
 
 ---@param node Schema.Node.Integer
@@ -243,7 +240,7 @@ function lib_decode.list(node, state)
 
 	local output = {}
 	for i = 1, depth do
-		local key = lib_decode[node.key.type](node.key, state, holes and nil or i)
+		local key = lib_decode[node.key.type](node.key, state, not holes and i or nil)
 		local val = lib_decode[node.val.type](node.val, state)
 
 		output[key] = val
