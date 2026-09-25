@@ -254,8 +254,6 @@ local state_schema =
 
 Any schema can be used to encode and decode values as long as the type being provided is supported by the schema.
 
-**There is currently no way to encode schemas other than lists but that is planned!!!**
-
 ```lua
 print(state_schema:encode({ true })) --> 18
 print(state_schema:decode(18)) --> { true }
