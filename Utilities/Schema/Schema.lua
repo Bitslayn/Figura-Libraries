@@ -123,6 +123,7 @@ local function write(ints, pos, wid, val)
 		local rval = bit32.extract(val, lwid, rwid)
 
 		ints[byte] = bit32.replace(ints[byte] or 0, lval, offset, lwid)
+		if rval == 0 then return end
 		ints[byte + 1] = bit32.replace(ints[byte + 1] or 0, rval, 0, rwid)
 	else
 		ints[byte] = bit32.replace(ints[byte] or 0, val, offset, wid)
