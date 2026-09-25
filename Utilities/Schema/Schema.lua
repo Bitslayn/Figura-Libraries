@@ -226,13 +226,13 @@ end
 
 ---Returns the binary representation of the given table following this schema
 ---@param self FOXSchema.Node.Any
----@param tbl table
+---@param val any
 ---@return integer ...
 ---@nodiscard
-function api_node:encode(tbl)
+function api_node:encode(val)
 	---@class FOXSchema.Encode.State
 	local state = { pos = 0, ints = {} }
-	lib_encode[self.type](self, state, tbl)
+	lib_encode[self.type](self, state, val)
 
 	sign(state.ints)
 	return table.unpack(state.ints)
@@ -286,7 +286,7 @@ end
 ---Returns a table representing the given binary data following this schema
 ---@param self FOXSchema.Node.Any
 ---@param ... integer
----@return table
+---@return any
 ---@nodiscard
 function api_node:decode(...)
 	---@class FOXSchema.Decode.State
