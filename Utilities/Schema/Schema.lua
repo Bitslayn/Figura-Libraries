@@ -221,7 +221,10 @@ end
 ---@param peek boolean
 ---@return unknown
 function lib_encode.enum(node, state, val, peek)
-	return lib_encode[node.key.type](node.key, state, node.flip[val], peek)
+	assert(node.flip[val] ~= nil, "Failed to enumerate '" .. tostring(val) .. "'")
+	local out = lib_encode[node.key.type](node.key, state, node.flip[val], peek)
+	assert(out ~= nil, "Failed to enumerate '" .. tostring(val) .. "'")
+	return out
 end
 
 ---Returns the binary representation of the given table following this schema
@@ -232,7 +235,10 @@ end
 function api_node:encode(val)
 	---@class FOXSchema.Encode.State
 	local state = { pos = 0, ints = {} }
-	lib_encode[self.type](self, state, val)
+	local ok, res = pcall(lib_encode[self.type], self, state, val)
+	if not ok then
+		error(res:match("%s(.-)\n"), 2)
+	end
 
 	sign(state.ints)
 	return table.unpack(state.ints)
