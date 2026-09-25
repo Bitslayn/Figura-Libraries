@@ -153,24 +153,22 @@ end
 --#REGION ˚♡ Encoder ♡˚
 --==============================================================================================================================
 
--- TODO Pending rewrite
-
 ---@class FOXSchema.Encode
 local lib_encode = {}
 
 ---@param node FOXSchema.Node.Table
 ---@param state FOXSchema.Encode.State
 ---@param tbl table
-function lib_encode.list(node, state, tbl)
+---@return boolean
+---@return integer
+---@return table
+local function list_header(node, state, tbl)
 	local keys = {}
-	local vals = {}
-	for key, val in pairs(tbl) do
-		key = lib_encode[node.key.type](node.key, state, key)
-
-		keys[#keys + 1] = key
-		vals[key] = val
+	local map = {}
+	for key in next, tbl do
+		keys[#keys + 1] = lib_encode[node.key.type](node.key, state, key, true)
+		map[keys[#keys]] = key
 	end
-	table.sort(keys)
 
 	-- Distinguishes between table<integer, any> and any[], where a table of any[] does not contain any holes.
 
@@ -178,26 +176,28 @@ function lib_encode.list(node, state, tbl)
 	local min = math.min(max, table.unpack(keys))
 	local limit = math.min(#keys, 2 ^ node.key.wid - 1)
 
-	local holes
-	if node.key.enum then
-		holes = node.key.enum[0] or #node.key.enum > limit
-	else
-		holes = min < 1 or 1 - min + max ~= limit
-	end
+	return min ~= 1 or 1 - min + max ~= limit, limit, map
+end
+
+---@param node FOXSchema.Node.Table
+---@param state FOXSchema.Encode.State
+---@param tbl table
+function lib_encode.list(node, state, tbl)
+	local holes, limit, map = list_header(node, state, tbl)
 
 	write(state.ints, state.pos, 1, holes and 1 or 0)
 	write(state.ints, state.pos + 1, node.key.wid, limit)
 	state.pos = state.pos + node.key.wid + 1
 
-	for i = 1, limit do
-		if holes then
-			write(state.ints, state.pos, node.key.wid, keys[i])
+	if holes then
+		for key, val in next, map do
+			write(state.ints, state.pos, node.key.wid, key)
 			state.pos = state.pos + node.key.wid
+			lib_encode[node.val.type](node.val, state, tbl[val])
 		end
-		local val = lib_encode[node.val.type](node.val, state, vals[keys[i]])
-		if val then
-			write(state.ints, state.pos, node.val.wid, val)
-			state.pos = state.pos + node.val.wid
+	else
+		for i = 1, #map do
+			lib_encode[node.val.type](node.val, state, tbl[map[i]])
 		end
 	end
 end
@@ -205,17 +205,22 @@ end
 ---@param node FOXSchema.Node.Integer
 ---@param state FOXSchema.Encode.State
 ---@param val integer
+---@param peek boolean
 ---@return integer
-function lib_encode.uint(node, state, val)
+function lib_encode.uint(node, state, val, peek)
+	if peek then return val end
+	write(state.ints, state.pos, node.wid, val)
+	state.pos = state.pos + node.wid
 	return val
 end
 
 ---@param node FOXSchema.Node.Enum
 ---@param state FOXSchema.Encode.State
 ---@param val unknown
+---@param peek boolean
 ---@return unknown
-function lib_encode.enum(node, state, val)
-	return lib_encode[node.key.type](node.key, state, node.flip[val])
+function lib_encode.enum(node, state, val, peek)
+	return lib_encode[node.key.type](node.key, state, node.flip[val], peek)
 end
 
 ---Returns the binary representation of the given table following this schema
