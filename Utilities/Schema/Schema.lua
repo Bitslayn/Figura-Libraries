@@ -3,7 +3,7 @@ ____  ___ __   __
 | __|/ _ \\ \ / /
 | _|| (_) |> w <
 |_|  \___//_/ \_\
-FOX's Schema v1.0-dev
+FOX's Schema v1.0-rc1
 
 Allows for encoding and decoding tables into binary
 
