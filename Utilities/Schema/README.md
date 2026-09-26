@@ -235,82 +235,56 @@ local visible_schema = Schema.list(armor_schema, boolean_schema)
 
 ---
 
-# Guide
+## Encoding : `FOXSchema.Node:encode(val)`
 
-## Quick Start
+### Description
 
-Create your schema given your type specifications.
+Giving a value that is supported by your schema will allow you to encode that value into binary. This should be done right before calling the ping function if you are using pings.
+
+### Parameters
+
+When calling `FOXSchema.Node:encode()`, you provide a value that is supported by that schema.
+
+- **Value** - The value to encode into bytes.
+
+### Example
 
 ```lua
 local Schema = require("Schema")
 
-local state_schema =
-	-- boolean[]
-	Schema.list(Schema.uint(3),
-		-- boolean
-		Schema.bool()
-	)
-```
+local state_schema = Schema.list(Schema.uint(2), Schema.bool())
 
-Any schema can be used to encode and decode values as long as the type being provided is supported by the schema.
-
-```lua
-print(state_schema:encode({ true })) --> 18
-print(state_schema:decode(18)) --> { true }
-```
-
-Using this with pings, you can ping the encoded data then decode that data in the ping.
-
-```lua
 function pings.state(...)
-	print(state_schema:decode(...))
+	print(...) -- 46: 0010 1110
 end
 
-pings.state(state_schema:encode({ true }))
+pings.state(state_schema:encode({ true, false, true }))
 ```
 
-## Outfits
+---
 
-This extended example uses enums to name keys for an outfit system.
+## Decoding : `FOXSchema.Node:decode(...integer)`
+
+### Description
+
+Reads binary data and converts this back into a table. This should be called inside the ping function if you are using pings.
+
+### Parameters
+
+When calling `FOXSchema.Node:decode()`, you provide the integers returned when calling `FOXSchema.Node:encode()`.
+
+- **...Integer** - A series of integers that represent binary data.
+
+### Example
 
 ```lua
 local Schema = require("Schema")
 
----@alias Outfit table<Outfit.ClothesTypes, Outfit.ClothesProps[]>
----@alias Outfit.ClothesTypes "hats"|"shirts"|"gloves"|"pants"|"socks"|"shoes"
----@class Outfit.ClothesProps
----@field id integer
----@field color integer
+local state_schema = Schema.list(Schema.uint(2), Schema.bool())
 
-local clothes_types = Schema.enum(Schema.uint(3), { "hats", "shirts", "gloves", "pants", "socks", "shoes" })
-local clothes_props = Schema.enum(Schema.uint(2), { "id", "color" })
-
-local clothes_schema =
-	-- Outfit
-	Schema.list(clothes_types,
-		-- Outfit.ClothesProps[]
-		Schema.list(Schema.uint(2),
-			-- Outfit.ClothesProps
-			Schema.list(clothes_props, Schema.uint(8))
-		)
-	)
-```
-
-```lua
--- Create ping function and default outfit
-
----@type Outfit
-local outfit = { shirts = { { id = 0, color = 0 } } }
-
----@param ... integer
-function pings.apply_outfit(...)
-	outfit = clothes_schema:decode(...)
+function pings.state(...)
+	printTable(state_schema:decode(...)) -- { true, false, true }
 end
 
--- Call ping function to apply new outfit
-
----@type Outfit
-local new_outfit = { hats = { { id = 0, color = 0 } }, shirts = { { id = 0, color = 0 } } }
-
-pings.apply_outfit(clothes_schema:encode(new_outfit))
+pings.state(state_schema:encode({ true, false, true }))
 ```
