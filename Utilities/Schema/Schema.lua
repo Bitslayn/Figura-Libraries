@@ -130,24 +130,14 @@ local function write(ints, pos, wid, val)
 	end
 end
 
----Signs all integers in the array
----
----Pinging unsigned integers could cost an additional 4 bytes!
+---Signs all unsigned 32-bit integers in the array
 ---@param ints integer[]
 local function sign(ints)
-	local buffer = data:createBuffer()
-
 	for i = 1, #ints do
-		buffer:writeInt(ints[i])
+		if ints[i] > 2147483647 then
+			ints[i] = -2147483648 + ints[i] % 2147483648
+		end
 	end
-
-	buffer:setPosition(0)
-
-	for i = 1, #ints do
-		ints[i] = buffer:readInt()
-	end
-
-	buffer:close()
 end
 
 --#ENDREGION --=================================================================================================================
