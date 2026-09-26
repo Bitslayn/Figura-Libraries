@@ -51,6 +51,9 @@ local api_node = {}
 ---@return FOXSchema.Node<table>
 ---@nodiscard
 function api_schema.list(key, val)
+	if not type(key):match("^Schema.Node") then error("Schema node expected for [1] of list, found " .. type(key) .. " here instead", 2) end
+	if not type(val):match("^Schema.Node") then error("Schema node expected for [2] of list, found " .. type(val) .. " here instead", 2) end
+
 	local self = { type = "list", key = key, val = val }
 	return setmetatable(self, { __type = "Schema.Node.Table", __index = api_node })
 end
@@ -60,6 +63,8 @@ end
 ---@return FOXSchema.Node<integer>
 ---@nodiscard
 function api_schema.uint(wid)
+	if type(wid) ~= "number" or wid < 1 or wid > 32 or wid % 1 ~= 0 then error("Invalid integer length '" .. tostring(wid) .. "'", 2) end
+
 	local self = { type = "uint", wid = wid }
 	return setmetatable(self, { __type = "Schema.Node.Integer", __index = api_node })
 end
@@ -71,8 +76,12 @@ end
 ---@return FOXSchema.Node<V>
 ---@nodiscard
 function api_schema.enum(key, enum)
+	if not type(key):match("^Schema.Node") then error("Schema node expected for [1] of enum, found " .. type(key) .. " here instead", 2) end
+	if type(enum) ~= "table" then error("Table expected for [2] of enum, found " .. type(enum) .. " here instead", 2) end
+
 	local flip = {}
 	for k, v in next, enum do
+		if flip[v] then error("Enum value '" .. tostring(v) .. "' is not unique", 2) end
 		flip[v] = k
 	end
 
@@ -226,9 +235,7 @@ function api_node:encode(val)
 	---@class FOXSchema.Encode.State
 	local state = { pos = 0, ints = {} }
 	local ok, res = pcall(lib_encode[self.type], self, state, val)
-	if not ok then
-		error(res:match("%s(.-)\n"), 2)
-	end
+	if not ok then error(res:match("%s(.-)\n"), 2) end
 
 	sign(state.ints)
 	return table.unpack(state.ints)
