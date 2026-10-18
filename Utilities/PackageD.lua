@@ -3,7 +3,7 @@ ____  ___ __   __
 | __|/ _ \\ \ / /
 | _|| (_) |> w <
 |_|  \___//_/ \_\
-FOX's Data Packages Lib v1.2c
+FOX's Data Packages Lib v1.2d
 
 Github: https://github.com/Bitslayn/FOX-s-Figura-APIs/blob/main/Utilities/PackageD.lua
 ]]
@@ -106,7 +106,6 @@ function lib.require(modname)
 	end
 
 	local script, err = load(res, prefix .. path, _FOX)
-
 	if not script then
 		error(err, 2)
 	end
@@ -152,7 +151,7 @@ end
 ---@return string[]
 function lib.listFiles(dir, recursive)
 	local list = {}
-	list_recursive(list, dir and dir:gsub("%.", "/") or "", recursive)
+	list_recursive(list, normalize(dir or ""), recursive)
 	return list
 end
 
