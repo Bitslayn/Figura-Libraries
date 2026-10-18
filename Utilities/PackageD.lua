@@ -3,7 +3,7 @@ ____  ___ __   __
 | __|/ _ \\ \ / /
 | _|| (_) |> w <
 |_|  \___//_/ \_\
-FOX's Data Packages Lib v1.2d
+FOX's Data Packages Lib v1.2e
 
 Github: https://github.com/Bitslayn/FOX-s-Figura-APIs/blob/main/Utilities/PackageD.lua
 ]]
@@ -54,8 +54,8 @@ local function normalize(modname)
 		:gsub("%.", "/")
 
 		-- Append ./ and ../ at beginning of modname
-		:gsub("^//", "./")
 		:gsub("^///", "../")
+		:gsub("^//", "./")
 
 		-- Append ../ between modname
 		:gsub("///", "/..")
