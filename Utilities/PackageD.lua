@@ -3,7 +3,7 @@ ____  ___ __   __
 | __|/ _ \\ \ / /
 | _|| (_) |> w <
 |_|  \___//_/ \_\
-FOX's Data Packages Lib v1.2b
+FOX's Data Packages Lib v1.2c
 
 Github: https://github.com/Bitslayn/FOX-s-Figura-APIs/blob/main/Utilities/PackageD.lua
 ]]
@@ -105,7 +105,13 @@ function lib.require(modname)
 		end
 	end
 
-	local result = { load(res, prefix .. path, _FOX)(path:match("(.-)/?([^/]+)$")) }
+	local script, err = load(res, prefix .. path, _FOX)
+
+	if not script then
+		error(err, 2)
+	end
+
+	local result = { script(path:match("(.-)/?([^/]+)$")) }
 	loading[path] = nil
 
 	lib.loaded[path] = result
