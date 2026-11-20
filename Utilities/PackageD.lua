@@ -3,7 +3,7 @@ ____  ___ __   __
 | __|/ _ \\ \ / /
 | _|| (_) |> w <
 |_|  \___//_/ \_\
-FOX's Data Packages Lib v1.3
+FOX's Data Packages Lib v1.3b
 
 Github: https://github.com/Bitslayn/FOX-s-Figura-APIs/blob/main/Utilities/PackageD.lua
 ]]
@@ -220,11 +220,20 @@ end
 ---@class FOXPackageD.TextureAPI: TextureAPI
 lib.textures = setmetatable({}, {
 	__index = function(_, name)
+		-- Proxy TextureAPI as self
+		if type(textures[name]) == "function" then
+			return function(_, ...)
+				return textures[name](textures, ...)
+			end
+		end
+
+		-- Fetch texture from data folder
 		if not textures[name] then
 			textures:read(name, read_base64(name:gsub("%.", "/") .. ".png"))
 		end
+
 		return textures[name]
-	end
+	end,
 })
 
 _FOX.textures = lib.textures
